@@ -31,19 +31,17 @@ class RobotMotion:
         self.x = self.x - v_hat/w_hat * np.sin(self.theta)  + v_hat/w_hat*np.sin(self.theta+w_hat*self.dt);
         self.y = self.y + v_hat/w_hat * np.cos(self.theta) -  v_hat/w_hat*np.cos(self.theta+w_hat*self.dt);
         self.theta = self.theta + w_hat*self.dt;
-     
-        return np.array([self.x,self.y,self.theta])
 
     def getState(self):
         return np.array([self.x,self.y,self.theta])
 
-    def drawRobot(self):
+    def getPoints(self):
         R = np.array([[np.cos(self.theta), -np.sin(self.theta)],
                       [np.sin(self.theta), np.cos(self.theta)]]);
         xy = np.array([[-1, 1, -1],
                        [.5, 0, -0.5]]);
         xy = np.dot(R,xy);
         xy = xy + np.array([[self.x],[self.y]]);
-        return xy
+        return np.transpose(xy)
 
     #plt.fill([x1,x2,x3],[y1,y2,y3])
