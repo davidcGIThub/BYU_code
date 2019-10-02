@@ -49,7 +49,7 @@ locations = landmarks.getLocations();
 lmd1 = plt.Circle(locations[0], radius = 0.5, fc = 'b');
 lmd2 = plt.Circle(locations[1], radius = 0.5, fc = 'b');
 lmd3 = plt.Circle(locations[2], radius = 0.5, fc = 'b');
-estimated_locations = landmarks.estimateLocations(np.array([-5,-3]))
+estimated_locations = landmarks.estimateLocations(np.array([x0, y0, theta0]))
 lmd1_est = plt.Circle(estimated_locations[0], radius = 0.5, fill = False)
 lmd2_est = plt.Circle(estimated_locations[1], radius = 0.5, fill = False)
 lmd3_est = plt.Circle(estimated_locations[2], radius = 0.5, fill = False)
@@ -75,7 +75,7 @@ def animate(i):
     robot_fig.xy  = rb.getPoints();
     state = rb.getState();
     #estimate landmark position
-    est_locs = landmarks.estimateLocations(np.array([state[0],state[1]]))
+    est_locs = landmarks.estimateLocations(state);
     lmd1_est.center = est_locs[0];
     lmd2_est.center = est_locs[1];
     lmd3_est.center = est_locs[2];
