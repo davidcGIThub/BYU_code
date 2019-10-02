@@ -46,12 +46,10 @@ ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
 ax.grid();
 robot_fig = plt.Polygon(rb.getPoints(),fc = 'g');
 locations = landmarks.getLocations();
-print(locations);
 lmd1 = plt.Circle(locations[0], radius = 0.5, fc = 'b');
 lmd2 = plt.Circle(locations[1], radius = 0.5, fc = 'b');
 lmd3 = plt.Circle(locations[2], radius = 0.5, fc = 'b');
 estimated_locations = landmarks.estimateLocations(np.array([-5,-3]))
-print(estimated_locations);
 lmd1_est = plt.Circle(estimated_locations[0], radius = 0.5, fill = False)
 lmd2_est = plt.Circle(estimated_locations[1], radius = 0.5, fill = False)
 lmd3_est = plt.Circle(estimated_locations[2], radius = 0.5, fill = False)
