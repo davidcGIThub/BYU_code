@@ -10,7 +10,7 @@ clear;
 close all;
 
 %   Load in the matrices needed for this problem
-load('prob3.mat');
+load('prob2.mat');
 
 %   There are two matrices, one containing 20
 %   basis images, and one containing the image
@@ -26,6 +26,17 @@ end
 %   And display the image x
 figure;
 imshow(x,[]);
+
+B = reshape(A,[65536,20]);
+X = reshape(x,[65536,1]);
+%P = B * ((B.') * B)\(B.'); why is isnt this working??
+c = ((B.'*B)\(B.'))*X;
+X_hat = B*c;
+Err = X - X_hat;
+err = reshape(Err,[256,256]);
+figure;
+imshow(err,[]);
+%X_hat = B * inv(transpose(B)*B)*transpose(B)*X;
 
 %   The image you are trying to decode is hidden
 %   in x.  In order to decode it, you need to

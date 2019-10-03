@@ -102,6 +102,39 @@ from time import time
 animate(0);
 
 ani = animation.FuncAnimation(fig, animate, frames = np.size(t), 
-                            interval = dt * 1000, blit = True, init_func = init, repeat = False)
+                            interval = dt*100, blit = True, init_func = init, repeat = False)
 
+plt.show();
+
+err_bnd_x = 2*np.sqrt(cov[0][:]);
+err_bnd_y = 2*np.sqrt(cov[1][:]);
+err_bnd_th = 2*np.sqrt(cov[2][:]);
+
+figure1, (ax1, ax2, ax3) = plt.subplots(3,1);
+ax1.plot(t,x_true, label = 'true');
+ax1.plot(t,x_est, label = 'estimate');
+ax1.legend();
+ax1.set(ylabel = 'x position (m)');
+ax2.plot(t,y_true);
+ax2.plot(t,y_est);
+ax2.set(ylabel = 'y position (m)');
+ax3.plot(t,theta_true);
+ax3.plot(t,theta_est);
+ax3.set(ylabel = 'heading (deg)', xlabel= ("time (s)"));
+plt.show();
+
+figure2, (ax1, ax2, ax3) = plt.subplots(3,1);
+ax1.plot(t,x_true-x_est, label = 'error', color = 'b');
+ax1.plot(t,err_bnd_x, label = 'error_bound', color = 'r');
+ax1.plot(t,-err_bnd_x, color = 'r');
+ax1.legend();
+ax1.set(ylabel = 'x error');
+ax2.plot(t,y_true-y_est, color = 'b');
+ax2.plot(t,err_bnd_y, color = 'r');
+ax2.plot(t,-err_bnd_y, color = 'r');
+ax2.set(ylabel = 'y error (m)');
+ax3.plot(t,theta_true-theta_est,color = 'b');
+ax3.plot(t,err_bnd_th,color = 'r');
+ax3.plot(t,-err_bnd_th,color = 'r');
+ax3.set(ylabel = 'heading error (rad)', xlabel= ("time (s)"));
 plt.show();

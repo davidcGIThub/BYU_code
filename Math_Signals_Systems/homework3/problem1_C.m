@@ -1,5 +1,6 @@
-%problem 1, part a
-t = linspace(-1,1,10000);
+%problem1_C
+
+t = linspace(-.99999,.99999,10000);
 p = zeros(10000, 5);
 q = p;
 e = p;
@@ -10,13 +11,18 @@ end
 e(:,1) = p(:,1);
 q(:,1) = e(:,1) ./ sqrt(sum(e(:,1).*e(:,1).*dt));
 
+w = transpose(1./(sqrt(1-t.^2)));
+e(:,1) = p(:,1);
+q(:,1) = e(:,1) ./ sqrt(sum(e(:,1).*e(:,1).* w * dt));
+
 for ii = 2:5
     e(:,ii) = p(:,ii);
     for jj = 1:ii-1
-        e(:,ii) = e(:,ii) - sum(p(:,ii).*q(:,jj).*dt) * q(:,jj);
+        e(:,ii) = e(:,ii) - sum(p(:,ii).*q(:,jj).* w * dt) * q(:,jj);
     end
-    q(:,ii) = e(:,ii) ./ sqrt(sum(e(:,ii).*e(:,ii).*dt));
+    q(:,ii) = e(:,ii) ./ sqrt(sum(e(:,ii).* e(:,ii) .*w * dt));
 end
+
 figure(1);
 plot(t,q(:,1));
 hold on;
@@ -24,10 +30,12 @@ plot(t,q(:,2));
 plot(t,q(:,3));
 plot(t,q(:,4));
 plot(t,q(:,5));
+title('Normalized Chebyshev Polynomials');
 legend('q0','q1','q2','q3','q4');
 hold off;
 
-%%%%%%%% part b %%%%%%%%%%%%%%%%%%%%
+%part d
+
 f = transpose(exp(-t));
 
 R = zeros(5,5);
