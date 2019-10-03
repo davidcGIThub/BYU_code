@@ -20,6 +20,11 @@ class RobotMotion:
         self.alpha3 = alpha3;
         self.alpha4 = alpha4;
         self.dt = dt;
+    
+    def setState(self,x,y,theta):
+        self.x = x;
+        self.y = y;
+        self.theta = theta;
 
     def vel_motion_model(self,u):
         v = u[0];
