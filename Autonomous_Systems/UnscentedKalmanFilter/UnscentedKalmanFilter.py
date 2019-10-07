@@ -41,12 +41,26 @@ class UKF:
         gamma = np.sqrt(n+lamda);
         ki_a = np.hstack( mu_a[:,None] , mu_a[:,None]+gamma*np.sqrt(Sig_a) , mu_a[:,None]-gamma*np.sqrt(Sig_a));
         #Pass Sigma points through motion model and compute Guassian statistics
-        v_i = v + Sig_a[3,:];
-        w_i = w + Sig_a[4,:];
-        theta_i = Sig_a[2,:];
+        v_i = v + ki_a[3,:];
+        w_i = w + ki_a[4,:];
+        theta_i = ki_a[2,:];
         x_row = -v_i/w_i*np.sin(theta_i) + v_i/w_i*np.sin(theta_i+w_i*self.dt);
         y_row = v_i/w_i*np.cos(theta_i) - v_i/w_i*np.cos(theta_i+w_i*self.dt);
         theta_row = w_i*self.dt;
-        Sig_x = Sig_a[0:3,:] + np.array([x_row, y_row, theta_row]);
-
-        #
+        ki_x = ki_a[0:3,:] + np.array([x_row, y_row, theta_row]);
+        w_m = np.arange(15);
+        w_c = np.arange(15);
+        w_m[0] = lamda /(n+lamda);
+        w_c[0] = lamda / (n_lamda) + (1 - self.alfa**2 + self.beta);
+        arr = np.arange(14) + 1;
+        w_m[1:15] = 1 / (2*(arr+self.lamda));
+        w_c[1:15] = w_m[1:15];
+        mu_est = np.dot(ki_x,w_m[:,None]);
+        Sig_est = np.dot(w_c*(ki_x-mu_est) , np.transpose(ki_x-mu_est));
+        #Predict observations at sigma points and comput Gaussian statistics
+        x_mark = m[0,0];
+        y_mark = m[1,0];
+        Z = np.array([ np.sqrt((x_mark - ki_x[0,:])**2 + (y_mark - ki_x[1,:])**2) + ki_a[5,:], 
+                      arctan2(y_mark-ki_x[1,:] , x_mark-ki_x[0,:]) - ki_x[2,:] ]);
+        z = 
+    
