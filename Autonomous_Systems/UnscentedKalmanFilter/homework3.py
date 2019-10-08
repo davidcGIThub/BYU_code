@@ -36,13 +36,13 @@ sig_b = 0.05;
 Sig = np.array([[1,0,0],
                [0,1,0],
                [0,0,0.1]]);
-landmarks = np.array([[6,4],[-7,8],[6,-4]]);
-len_m = np.size(landmarks,0);
+m = np.array([[6,4],[-7,8],[6,-4]]);
+len_m = np.size(m,0);
 
 #Initialize Estimation Objects
 rb = rbm(x0,y0,theta0,alpha1,alpha2,alpha3,alpha4,dt);
 rb_est = rbm(x0,y0,theta0,alpha1,alpha2,alpha3,alpha4,dt);
-m = lmm(landmarks , sig_r , sig_b);
+meas = lmm(m , sig_r , sig_b);
 ukf = UKF(dt,alpha,sig_r,sig_b,alfa,kappa,beta);
 
 #initialize figures
@@ -62,28 +62,28 @@ def init():
     ax.add_patch(robot_fig);
     ax.add_patch(robot_est_fig);
     time_text.set_text('0.0');
-    lmd_figs.set_data(landmarks[:,0],landmarks[:,1]);
+    lmd_figs.set_data(m[:,0],m[:,1]);
     lmd_meas_figs.set_data([],[]);
     return robot_fig, robot_est_fig, time_text, lmd_figs, lmd_meas_figs
 
 def animate(i):
-    global rb, rb_est, m, t, vc, wc, mu, Sig, ms
+    global rb, rb_est, meas, t, vc, wc, mu, Sig, ms
     #propogate robot motion
     u = np.array([vc[i],wc[i]]);
     rb.vel_motion_model(u);
     robot_fig.xy  = rb.getPoints();
     state = rb.getState();
     #measure landmark position
-    landmarks_meas = m.getLandmarks(state);
-    Ranges = m.getRanges(state);
-    Bearings = m.getBearings(state);
+    landmarks_meas = meas.getLandmarks(state);
+    Ranges = meas.getRanges(state);
+    Bearings = meas.getBearings(state);
     z = np.array([Ranges.flatten(), Bearings.flatten()]);
     lmd_meas_figs.set_data(landmarks_meas[:,0], landmarks_meas[:,1]);
     lmd_meas_figs.set_markersize(ms);
     #estimate robot motion
-    #(mu, Sig, landmarks_meas)  = ekf.EKF_Localization(mu,Sig,u,state);
-    #rb_est.setState(mu[0],mu[1],mu[2]);
-    robot_est_fig.xy  = rb.getPoints();
+    (mu, Sig)  = ukf.UKF_Localization(mu,Sig,u,z,m);
+    rb_est.setState(mu[0],mu[1],mu[2]);
+    robot_est_fig.xy  = rb_est.getPoints();
     #update time
     time_text.set_text('time = %.1f' % t[i]);
     #save state information
