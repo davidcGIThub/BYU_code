@@ -60,7 +60,14 @@ class UKF:
         #Predict observations at sigma points and comput Gaussian statistics
         x_mark = m[0,0];
         y_mark = m[1,0];
-        Z = np.array([ np.sqrt((x_mark - ki_x[0,:])**2 + (y_mark - ki_x[1,:])**2) + ki_a[5,:], 
-                      arctan2(y_mark-ki_x[1,:] , x_mark-ki_x[0,:]) - ki_x[2,:] ]);
-        z = 
+        Z = np.array([[ np.sqrt((x_mark - ki_x[0,:])**2 + (y_mark - ki_x[1,:])**2) + ki_a[5,:] ], 
+                      [np.arctan2(y_mark-ki_x[1,:] , x_mark-ki_x[0,:]) - ki_x[2,:] ]]);
+        z_est = np.dot(Z,w_m[:,None]);
+        S = np.dot(w_c*(Z-z_est) , np.transpose(Z-z_est));
+        Sig_cross = np.dot(w_c*(ki_x-mu_est) , np.transpose(Z-z_est));
+        #Update mean and covariance
+        K = np.dot(Sig_cross , np.linalg.inv(S));
+        mu_est = mu_est + np.dot(K , z[:,None] - z_est);
+        Sig_est = Sig_est - np.dot( K , np.dot(S,np.transpose(K)) );
+        return mu_est.flatten(), Sig_est
     
