@@ -28,15 +28,15 @@ alpha2 = 0.01;
 alpha3 = 0.01;
 alpha4 = 0.1;
 alpha = np.array([alpha1, alpha2, alpha3, alpha4]);
-alfa = 0.5;
-kappa = 3.0;
+alfa = 0.4;
+kappa = 4.0;
 beta = 2;
 sig_r = 0.1;
 sig_b = 0.05;
-Sig = np.array([[1,0,0],
-               [0,1,0],
+Sig = np.array([[.1,0,0],
+               [0,.1,0],
                [0,0,0.1]]);
-m = np.array([[6,4],[-7,8],[6,-4]]);
+m = np.array([[6,4]]);#,[-7,8],[6,-4]]);
 len_m = np.size(m,0);
 
 #Initialize Estimation Objects
