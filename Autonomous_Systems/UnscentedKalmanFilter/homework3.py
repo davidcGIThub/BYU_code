@@ -36,7 +36,7 @@ sig_b = 0.05;
 Sig = np.array([[.1,0,0],
                [0,.1,0],
                [0,0,0.1]]);
-m = np.array([[6,4]]);#,[-7,8],[6,-4]]);
+m = np.array([[6,4],[-7,8],[6,-4]]);
 len_m = np.size(m,0);
 
 #Initialize Estimation Objects
