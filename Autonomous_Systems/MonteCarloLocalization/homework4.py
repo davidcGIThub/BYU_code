@@ -24,7 +24,7 @@ alpha = np.array([alpha1, alpha2, alpha3, alpha4])
 rb = rbm(x0,y0,theta0,alpha1,alpha2,alpha3,alpha4,dt)
 rb_est = rbm(x0,y0,theta0,alpha1,alpha2,alpha3,alpha4,dt)
 meas = lmm(sig_r , sig_b)
-mcl = MCL(dt,alpha,sig_r,sig_b)
+mcl = MCL(dt,alpha,sig_r,sig_b,M)
 ki_x = np.random.uniform(-10,10,M)
 ki_y = np.random.uniform(-10,10,M)
 ki_th = np.random.uniform(0,2*np.pi,M)
@@ -41,6 +41,7 @@ time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
 ms = 12
 lmd_figs, = ax.plot([],[], 'bo', ms=ms)
 lmd_meas_figs, = ax.plot([],[], 'ko', fillstyle = 'none', ms=ms)
+particles, = ax.plot([],[], 'ko', ms=1)
 
 def init():
     #initialize animation
@@ -49,7 +50,8 @@ def init():
     time_text.set_text('0.0')
     lmd_figs.set_data(m[:,0],m[:,1])
     lmd_meas_figs.set_data([],[])
-    return robot_fig, robot_est_fig, time_text, lmd_figs, lmd_meas_figs
+    particles.set_data(ki[0,:],ki[1,:])
+    return robot_fig, robot_est_fig, time_text, lmd_figs, lmd_meas_figs, particles
 
 def animate(i):
     global rb, rb_est,ki, meas, t, vc, wc, mu, ms
@@ -69,6 +71,9 @@ def animate(i):
     z = np.array([Ranges.flatten(), Bearings.flatten()])
     lmd_meas_figs.set_data(landmarks_meas[:,0], landmarks_meas[:,1])
     lmd_meas_figs.set_markersize(ms)
+    #particles
+    particles.set_data(ki[0,:], ki[1,:])
+    particles.set_markersize(1)
     #estimate robot motion
     (ki, mu)  = mcl.MCL_Localization(ki,u,z,m_temp)
     rb_est.setState(mu[0],mu[1],mu[2])
@@ -83,10 +88,9 @@ def animate(i):
     y_est[i] = mu[1]
     theta_est[i] = mu[2]
 
-    return robot_fig, robot_est_fig, time_text, lmd_figs, lmd_meas_figs
+    return robot_fig, robot_est_fig, time_text, lmd_figs, lmd_meas_figs, particles
 
 from time import time
-animate(0)
 
 ani = animation.FuncAnimation(fig, animate, frames = np.size(t), 
                             interval = dt*animation_speed, blit = True, init_func = init, repeat = False)
