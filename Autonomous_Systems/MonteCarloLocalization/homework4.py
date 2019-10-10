@@ -61,13 +61,9 @@ def animate(i):
     robot_fig.xy  = rb.getPoints()
     state = rb.getState()
     #measure landmark position
-    if cycle:
-        m_temp = np.array([m[i%len_m]])
-    else:
-        m_temp = m
-    landmarks_meas = meas.getLandmarks(state,m_temp)
-    Ranges = meas.getRanges(state,m_temp)
-    Bearings = meas.getBearings(state,m_temp)
+    landmarks_meas = meas.getLandmarks(state,m)
+    Ranges = meas.getRanges(state,m)
+    Bearings = meas.getBearings(state,m)
     z = np.array([Ranges.flatten(), Bearings.flatten()])
     lmd_meas_figs.set_data(landmarks_meas[:,0], landmarks_meas[:,1])
     lmd_meas_figs.set_markersize(ms)
@@ -75,7 +71,7 @@ def animate(i):
     particles.set_data(ki[0,:], ki[1,:])
     particles.set_markersize(1)
     #estimate robot motion
-    (ki, mu)  = mcl.MCL_Localization(ki,u,z,m_temp)
+    (ki, mu)  = mcl.MCL_Localization(ki,u,z,m)
     rb_est.setState(mu[0],mu[1],mu[2])
     robot_est_fig.xy  = rb_est.getPoints()
     #update time
@@ -95,4 +91,42 @@ from time import time
 ani = animation.FuncAnimation(fig, animate, frames = np.size(t), 
                             interval = dt*animation_speed, blit = True, init_func = init, repeat = False)
 
+plt.show()
+
+err_bnd_x = t*0 + sig_r/np.sqrt(2) * 1.96
+err_bnd_y = t*0 + sig_r/np.sqrt(2) * 1.96 
+err_bnd_th = t*0 + sig_b * 1.96 
+
+figure1, (ax1, ax2, ax3) = plt.subplots(3,1)
+ax1.plot(t,x_true, label = 'true')
+ax1.plot(t,x_est, label = 'estimate')
+ax1.legend()
+ax1.set(ylabel = 'x position (m)')
+ax2.plot(t,y_true)
+ax2.plot(t,y_est)
+ax2.set(ylabel = 'y position (m)')
+ax3.plot(t,theta_true)
+ax3.plot(t,theta_est)
+ax3.set(ylabel = 'heading (deg)', xlabel= ("time (s)"))
+if given:
+    ax1.plot(t,x_given, label = 'given')
+    ax1.legend()
+    ax2.plot(t,y_given)
+    ax3.plot(t,theta_given)
+plt.show()
+
+figure2, (ax1, ax2, ax3) = plt.subplots(3,1)
+ax1.plot(t,x_true-x_est, label = 'error', color = 'b')
+ax1.plot(t,err_bnd_x, label = 'error_bound', color = 'r')
+ax1.plot(t,-err_bnd_x, color = 'r')
+ax1.legend()
+ax1.set(ylabel = 'x error')
+ax2.plot(t,y_true-y_est, color = 'b')
+ax2.plot(t,err_bnd_y, color = 'r')
+ax2.plot(t,-err_bnd_y, color = 'r')
+ax2.set(ylabel = 'y error (m)')
+ax3.plot(t,theta_true-theta_est,color = 'b')
+ax3.plot(t,err_bnd_th,color = 'r')
+ax3.plot(t,-err_bnd_th,color = 'r')
+ax3.set(ylabel = 'heading error (rad)', xlabel= ("time (s)"))
 plt.show()

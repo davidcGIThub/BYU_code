@@ -13,8 +13,8 @@ sig_r = 0.1
 sig_b = 0.05
 m = np.array([[6,4],[-7,8],[6,-4]]) #landmark locations
 M = 1000 #number of particles
-animation_speed = 1000
-cycle = False
+
+animation_speed = 100
 given = False
 #calculated parameters
 t = np.linspace(0,T,T/dt+1)
