@@ -2,8 +2,8 @@
 from scipy.io import loadmat
 import numpy as np
 
-matdata = loadmat('hw3_1_soln_data.mat')
 #matdata = loadmat('hw3_1_soln_data.mat')
+matdata = loadmat('hw3_1_soln_data.mat')
 #matdata = loadmat('hw3_1_soln_data.mat')
 vc = matdata['v'][0]
 wc = matdata['om'][0]
@@ -31,7 +31,7 @@ sig_r = 0.1
 sig_b = 0.05
 m = np.array([[6,4],[-7,8],[6,-4]]) #landmark locations
 animation_speed = 100;
-cycle = True;
+cycle = False;
 given = True;
 
 
