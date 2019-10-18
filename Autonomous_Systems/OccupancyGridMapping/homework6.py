@@ -7,6 +7,7 @@ from OccupancyGridMapping import OGM
 matdata = loadmat('BYU_code/Autonomous_Systems/OccupancyGridMapping/state_meas_data.mat')
 X = matdata['X']
 z = matdata['z']
+thk = matdata['thk'][0]
 x_data = X[0]
 y_data = X[1]
 th_data = X[2]
@@ -17,28 +18,26 @@ pm_hit = 0.7
 
 width = 100
 height = 100
-FPS = 1000
-resize_factor = 10
+FPS = 100
+resize_factor = 5
 
 rp  = RobotPath(x_data,y_data,th_data)
-ogm = OGM(alpha, beta, z_max,pm_hit, height, width)
-last_image = np.array([[[]]])
+ogm = OGM(alpha, beta, z_max,pm_hit, height, width,thk)
+img_array = []
 
 for i in range(np.size(X,1)):
-    #frame = np.random.randint(0, 256, 
-    #                          (height, width), 
-    #                          dtype=np.uint8)
-    frame = ogm.occupancy_Grid_Mapping(X[:,i],z[:,:,i])
-    #frame = ogm.getMap()
-    #frame = np.zeros([height,width],dtype=np.uint8)
+    frame = ogm.occupancy_Grid_Mapping2(X[:,i],z[:,:,i])
     enlarged_frame = np.repeat(np.repeat(frame,resize_factor,axis=0),resize_factor,axis=1)
     pts = np.array([rp.getPoints(i,resize_factor)], dtype = np.int32)
     cv2.fillPoly(enlarged_frame,pts,255)
     flipped = cv2.flip(enlarged_frame,0)
     cv2.imshow('Image',flipped)
     cv2.waitKey(int(1.0/FPS*1000))
-    if i == np.size(X,1)-1:
-        last_image = flipped
+    img_array.append((flipped*255).astype(np.uint8))
 
-cv2.imshow('Image',last_image)
-cv2.waitKey()
+fourcc = cv2.VideoWriter_fourcc(*'MP42')
+video = cv2.VideoWriter('occ_grid_map_vid.avi',fourcc, float(FPS), (width, height),0)
+print(img_array[0])
+for i in range(len(img_array)):
+    video.write(img_array[i])
+video.release()
