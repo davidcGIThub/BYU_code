@@ -33,10 +33,10 @@ for i in range(np.size(X,1)):
     flipped = cv2.flip(enlarged_frame,0)
     cv2.imshow('Image',flipped)
     cv2.waitKey(int(1.0/FPS*1000))
-    img_array.append((flipped*255).astype(np.uint8))
+    img_array.append(np.reshape((flipped*255).astype(np.uint8) , (height*resize_factor,width*resize_factor,1)))
 
 fourcc = cv2.VideoWriter_fourcc(*'MP42')
-video = cv2.VideoWriter('occ_grid_map_vid.avi',fourcc, float(FPS), (width, height),0)
+video = cv2.VideoWriter('./occ_grid_map_vid.avi',fourcc, float(24), (width*resize_factor, height*resize_factor),0)
 print(img_array[0])
 for i in range(len(img_array)):
     video.write(img_array[i])
