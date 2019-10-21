@@ -15,6 +15,7 @@ theta_true = t * 0
 x_est = t * 0
 y_est = t * 0
 theta_est = t * 0
+cov = np.zeros([3,3,np.size(t)])
 state = np.array([x0,y0,theta0])
 mu = np.array([x0,y0,theta0])
 len_m = np.size(m,0)
@@ -71,7 +72,7 @@ def animate(i):
     particles.set_data(ki[0,:], ki[1,:])
     particles.set_markersize(1)
     #estimate robot motion
-    (ki, mu)  = mcl.MCL_Localization(ki,u,z,m)
+    (ki, mu, P)  = mcl.MCL_Localization(ki,u,z,m)
     rb_est.setState(mu[0],mu[1],mu[2])
     robot_est_fig.xy  = rb_est.getPoints()
     #update time
@@ -83,6 +84,7 @@ def animate(i):
     x_est[i] = mu[0]
     y_est[i] = mu[1]
     theta_est[i] = mu[2]
+    cov[:,:,i] = P
 
     return robot_fig, robot_est_fig, time_text, lmd_figs, lmd_meas_figs, particles
 
@@ -93,9 +95,9 @@ ani = animation.FuncAnimation(fig, animate, frames = np.size(t),
 
 plt.show()
 
-err_bnd_x = t*0 + sig_r/np.sqrt(2) * 1.96
-err_bnd_y = t*0 + sig_r/np.sqrt(2) * 1.96 
-err_bnd_th = t*0 + sig_b * 1.96 
+err_bnd_x = np.sqrt(cov[0,0,:])
+err_bnd_y = np.sqrt(cov[1,1,:])
+err_bnd_th = np.sqrt(cov[2,2,:])
 
 figure1, (ax1, ax2, ax3) = plt.subplots(3,1)
 ax1.plot(t,x_true, label = 'true')
