@@ -11,74 +11,46 @@ class EIF:
                        landmarks = np.array([[6,4],[-7,8],[12,-8],[-2,0],[-10,2],[13,7]])): #rad
         self.dt = dt
         self.sig_v = 0.15
-        self.sig_w = 0.1 
+        self.sig_w = 0.1
         self.sig_r = sig_r
         self.sig_ph = sig_ph
         self.landmarks = landmarks
 
-    def EIF_localization(self, xi,omega,u,z):
-        print("to do")
-'''
-    def EKF_Localization(self, mu, Sig, u, state): #need to make acccept z instead of state
-        #mu in the last time step 
-        lmdModel = lmd(self.sig_r, self.sig_ph);
-        lmdMeasured = np.zeros((np.size(self.landmarks,0),2));
-        mu_x = mu[0];
-        mu_y = mu[1];
-        mu_th = mu[2];
-        #control input
-        vc = u[0];
-        wc = u[1];
-        #use prior theta to predict current state
-        theta = mu_th;
-        #jacobian of g(u(t),x(t-1))
-        G = np.identity(3);
-        G[0][2] = -vc/wc*np.cos(theta) + vc/wc*np.cos(theta+wc*self.dt);
-        G[1][2] = -vc/wc*np.sin(theta) + vc/wc*np.sin(theta+wc*self.dt);
-        #Jacobian to map noise from control space to state space
-        V = np.zeros((3,2));
-        V[0][0] = ( -np.sin(theta) + np.sin(theta + wc*self.dt) ) / wc;
-        V[0][1] = ( vc * (np.sin(theta) - np.sin(theta + wc*self.dt)) ) / wc**2 + ( vc*np.cos(theta + wc*self.dt)*self.dt ) / wc; 
-        V[1][0] = ( np.cos(theta) - np.cos(theta + wc*self.dt) ) / wc;
-        V[1][1] = - ( vc * (np.cos(theta) - np.cos(theta+wc*self.dt)) ) / wc**2 + ( vc * np.sin(theta + wc*self.dt)*self.dt ) / wc;
-        V[2][1] = self.dt;
-        #control noise covariance
-        M = np.zeros((2,2));
-        M[0][0] = self.alpha1*vc**2 + self.alpha2*wc**2;
-        M[1][1] = self.alpha3*vc**2 + self.alpha4*wc**2;
-        #state estimate - prediction step
-        mu_x = mu_x - vc*np.sin(theta)/wc + vc*np.sin(theta+wc*self.dt)/wc;
-        mu_y = mu_y + vc*np.cos(theta)/wc - vc*np.cos(theta+wc*self.dt)/wc;
-        mu_th = mu_th + wc*self.dt;
-        mu_est = np.array([mu_x,mu_y,mu_th]);
-        #state covariance - prediction step
-        Sig_est = np.dot( G ,np.dot(Sig,np.transpose(G)) ) + np.dot( V, np.dot(M,np.transpose(V)) );
-        #Uncertainty due to measurement noise
-        Q = np.zeros((2,2));
-        Q[0][0] = self.sig_r**2;
-        Q[1][1] = self.sig_ph**2;
-        #Measurement Update
-        num_landmarks = np.size(self.landmarks,0);
+    def EIF_localization(self,xi,omega,mu,sigma,u,z):
+        v = u[0]
+        v_hat = v + self.sig_v*np.random.randn()
+        w = u[1]
+        w_hat = w + self.sig_w*np.random.randn()
+        x = mu[0]
+        y = mu[1]
+        theta = mu[2]
+        G = np.array([[1,        0,       -v*np.sin(theta)*self.dt],
+                      [0,        1,        v*np.cos(theta)*self.dt],
+                      [0,        0,        1]])
+        M = np.array([[self.sig_v*np.random.randn(),            0],
+                      [0,            self.sig_w*np.random.randn()]])
+        V = np.array([[np.cos(theta)*self.dtdt ,        0],
+                      [np.sin(theta)*self.dtdt ,        0],
+                      [0                       , self.dt]])
+        omega_bar = np.linalg.inv( np.dot(G , np.dot(sigma,np.transpose(G))) )
+        mu_bar = mu + np.array([v_hat*np.cos(theta)*self.dt, v_hat*np.sin(theta)*self.dt, w_hat*dt])
+        xi_bar = np.dot(omega_bar,mu_bar[:,None])
+        Q = np.array([[self.sig_r**2, 0],
+                      [0,   self.sig_phi**2]])
+        Qinv = np.linalg.inv(Q)
+        #omega_bar = omega_bar + 
+        num_landmarks = np.size(self.landmarks,0)
         for i in range(0,num_landmarks):
-            landmark = self.landmarks[i]
-            Range = lmdModel.getRange(landmark,state);
-            Bearing = lmdModel.getBearing(landmark,state);
-            z = np.array([[Range],[Bearing]]);
-            lmdMeasured[i] = lmdModel.getGlobalXY(Range,Bearing,state);
-            q = (landmark[0] - mu[0])**2 + (landmark[1] - mu[1])**2;
-            b = np.arctan2(landmark[1] - mu[1], landmark[0] - mu[0]) - mu[2];
-            z_hat = np.array([[np.sqrt(q)] , [b]]);
-            H = np.zeros((2,3));
-            H[0][0] = -(landmark[0] - mu[0])/np.sqrt(q);
-            H[0][1] = -(landmark[1] - mu[1])/np.sqrt(q);
-            H[1][0] = -(landmark[1] - mu[1])/q;
-            H[1][1] = -(landmark[0] - mu[0])/q;
-            H[1][2] = -1.0;
-            S = np.dot( H , np.dot(Sig_est,np.transpose(H)) ) + Q;
-            K = np.dot( Sig_est , np.dot(np.transpose(H) , np.linalg.inv(S)) );
-            mu_est = mu_est.reshape(-1,1) + np.dot(K,(z-z_hat));
-            mu_est = mu_est.flatten();
-            Sig_est = np.dot( (np.identity(3) - np.dot(K,H)) , Sig_est);
-        return mu_est, Sig_est, lmdMeasured
-'''
-        
+            landmark = self.landmarks[i,:]
+            q = (landmark[0] - mu_bar[0])**2 + (landmark[1] - mu_bar[1])**2
+            b = np.arctan2(landmark[1] - mu_bar[1], landmark[0] - mu_bar[0]) - mu_bar[2]
+            h = np.array([[np.sqrt(q)] , [b]])
+            z_t = (z[i,:])[:,None]
+            H = np.array([[-(landmark[0] - mu_bar[0])/np.sqrt(q)    ,   -(landmark[1] - mu_bar[1])/np.sqrt(q)   ,   0],
+                          [(landmark[1] - mu_bar[1])/q             ,   -(landmark[0] - mu_bar[0])/q            ,  -1.0]])
+            omega_bar = omega_bar + np.dot(np.transpose(H) , np.dot(Qinv,H))
+            brackets = z_t - h + np.dot(H,mu_bar[:,None]) 
+            xi_bar = xi_bar + np.dot( np.transpose(H) , np.dot(Qinv, brackets) )
+        sigma_bar = np.linalg.inv(omega_bar)
+        mu_bar = np.dot(sigma_bar,xi_bar)
+        return xi_bar,omega_bar,mu_bar,sigma_bar

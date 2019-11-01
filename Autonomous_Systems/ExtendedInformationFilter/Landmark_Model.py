@@ -31,9 +31,15 @@ class LandmarkModel:
         bearings = bearings + np.random.randn(len_m,1)*self.std_b
         return bearings
 
+    def getLandmarkMeasurements(self,reference,ranges,bearings):
+        x = ranges*np.cos(bearings + reference[2]) + reference[0]
+        y = ranges*np.sin(bearings + reference[2]) + reference[1]
+        return np.concatenate((x,y),1)
+
     def getLandmarkEstimates(self,reference,m):
         bearings = self.getBearings(reference,m)
         ranges = self.getRanges(reference,m)
         x = ranges*np.cos(bearings + reference[2]) + reference[0]
         y = ranges*np.sin(bearings + reference[2]) + reference[1]
         return np.concatenate((x,y),1)
+
