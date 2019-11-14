@@ -25,9 +25,6 @@ alpha = np.array([alpha1,alpha2,alpha3,alpha4])
 step = 0
 sig_r = 0.1
 sig_b = 0.05
-Sig = np.array([[1,0,0],
-               [0,1,0],
-               [0,0,0.1]])
 cov = np.zeros((3,np.size(t)))
 
 landmarks = np.array([[6,4],[-7,8],[6,-4],[2,2],[7,9],[4,-8],[-9,-8]])
@@ -35,3 +32,15 @@ landmarks = np.array([[6,4],[-7,8],[6,-4],[2,2],[7,9],[4,-8],[-9,-8]])
 x_limits = (-10, 10)
 y_limits = (-10, 10)
 ms = 12 #landmark size
+N = np.size(landmarks,0)
+#mu = np.zeros(3+2*N)
+#mu[0] = x0
+#mu[1] = y0
+#mu[2] = theta0
+mu = np.array([x0,y0,theta0])
+mu = np.concatenate((mu, landmarks.flatten()))
+print("mu", mu)
+Sig = np.exp(100)*np.identity(2*N + 3)
+Sig[0,0] = 0
+Sig[1,1] = 0
+Sig[2,2] = 0

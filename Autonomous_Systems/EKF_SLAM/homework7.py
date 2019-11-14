@@ -12,6 +12,7 @@ rb = robot(x0,y0,theta0,alpha1,alpha2,alpha3,alpha4,dt)
 rb_est = robot(x0,y0,theta0,alpha1,alpha2,alpha3,alpha4,dt)
 measDevice = mmd(sig_r,sig_b)
 ekf = EKF(dt,alpha,sig_r,sig_b)
+c = np.ones(N)
 
 fig = plt.figure()
 ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
@@ -43,13 +44,16 @@ def animate(i):
     Ranges = measDevice.getRanges(state,landmarks)
     Bearings = measDevice.getBearings(state,landmarks)
     z = np.concatenate((Ranges,Bearings),1)
-    landmark_meas = measDevice.getLandmarkEstimates(state,Ranges,Bearings)
+    #estimate robot motion
+    (mu, Sig) = ekf.EKF_SLAM(mu,Sig,u,z,c)
+    rb_est.setState(mu[0],mu[1],mu[2])
+    print("xy", mu[0], mu[1])
+    robot_est_fig.xy = rb_est.getPoints()
+    #update landmark estimates
+    #landmark_meas = measDevice.getLandmarkEstimates(state,Ranges,Bearings)
+    landmark_meas = np.reshape(mu[3:3+2*N],(N,2))
     lmdMeas_figs.set_data(landmark_meas[:,0], landmark_meas[:,1])
     lmdMeas_figs.set_markersize(ms)
-    #estimate robot motion
-    (mu, Sig) = ekf.EKF_Localization(mu,Sig,u,z,landmarks)
-    rb_est.setState(mu[0],mu[1],mu[2])
-    robot_est_fig.xy = rb_est.getPoints()
     #update time
     time_text.set_text('time = %.1f' % t[i])
     #save state information
