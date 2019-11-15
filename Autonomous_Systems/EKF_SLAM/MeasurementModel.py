@@ -22,14 +22,18 @@ class MeasurementModel:
         ranges = ranges + np.random.randn(len_m,1)*self.std_r
         return ranges
 
-    def getBearings(self, reference,m):
+    def getBearings(self, reference,m,fov):
         len_m = np.size(m,0)
         XY_dist = self.getXYdist(reference,m)
         theta = reference[2]
         bearings = np.arctan2(XY_dist[:,1],XY_dist[:,0])
         bearings = bearings.reshape(-1,1) - theta
         bearings = bearings + np.random.randn(len_m,1)*self.std_b
-        return bearings
+        c = bearings.flatten()
+        c -= np.pi * 2 * np.floor((c + np.pi) / (2 * np.pi))
+        c[np.abs(c) > fov/2.0] = 0
+        c[np.abs(c) > 0] = 1
+        return bearings, c.astype(int)
 
     def getLandmarkEstimates(self,reference,ranges,bearings):
         x = ranges*np.cos(bearings + reference[2]) + reference[0]

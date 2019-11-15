@@ -12,12 +12,10 @@ rb = robot(x0,y0,theta0,alpha1,alpha2,alpha3,alpha4,dt)
 rb_est = robot(x0,y0,theta0,alpha1,alpha2,alpha3,alpha4,dt)
 measDevice = mmd(sig_r,sig_b)
 ekf = EKF(dt,alpha,sig_r,sig_b)
-c = np.ones(N)
-detected_flag = np.zeros(N)
 
 fig = plt.figure()
 ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
-                     xlim=x_limits, ylim=y_limits)
+                     xlim=(-x_limits,x_limits), ylim=(-y_limits,y_limits))
 ax.grid()
 robot_fig = plt.Polygon(rb.getPoints(),fc = 'g')
 robot_est_fig = plt.Polygon(rb_est.getPoints(),fill=False)
@@ -43,10 +41,9 @@ def animate(i):
     state = rb.getState()
     #measure landmark position
     Ranges = measDevice.getRanges(state,landmarks)
-    Bearings = measDevice.getBearings(state,landmarks)
+    (Bearings,c) = measDevice.getBearings(state,landmarks,fov)
     z = np.concatenate((Ranges,Bearings),1)
     #estimate robot motion
-    print("mu", mu)
     (mu, Sig) = ekf.EKF_SLAM(mu,Sig,u,z,c,detected_flag)
     detected_flag[c > 0] = 1
     rb_est.setState(mu[0],mu[1],mu[2])
@@ -55,7 +52,6 @@ def animate(i):
     #update landmark estimates
     #landmark_meas = measDevice.getLandmarkEstimates(state,Ranges,Bearings)
     landmark_meas = np.reshape(mu[3:3+2*N],(N,2))
-    print("landmark_meas", landmark_meas)
     lmdMeas_figs.set_data(landmark_meas[:,0], landmark_meas[:,1])
     lmdMeas_figs.set_markersize(ms)
     #update time
@@ -67,10 +63,7 @@ def animate(i):
     x_est[i] = mu[0]
     y_est[i] = mu[1]
     theta_est[i] = mu[2]
-    cov[0][i] = Sig[0][0]
-    cov[1][i] = Sig[1][1]
-    cov[2][i] = Sig[2][2]
-
+    cov[:,i] = Sig.diagonal()
     return robot_fig, robot_est_fig, lmd_figs, lmdMeas_figs, time_text
 
 from time import time
@@ -116,3 +109,14 @@ ax3.plot(t,-err_bnd_th,color = 'r')
 ax3.set(ylabel = 'heading error (rad)', xlabel= ("time (s)"))
 plt.show()
 
+figure3, (ax1, ax2) = plt.subplots(2,1)
+length = np.size(t)
+for i in range(0,N):
+    ax1.plot(t[3:length],cov[3+2*i,3:length],label = i)
+ax1.legend()
+ax1.set(ylabel = 'covariance x_landmark pos')
+for i in range(0,N):
+    ax2.plot(t[3:length],cov[4+2*i,3:length],label = i)
+ax2.legend()
+ax2.set(ylabel = 'covariance y_landmark pos')
+plt.show()

@@ -25,14 +25,13 @@ alpha = np.array([alpha1,alpha2,alpha3,alpha4])
 step = 0
 sig_r = 0.1
 sig_b = 0.05
-cov = np.zeros((3,np.size(t)))
 
-landmarks = np.array([[6,4],[-7,8],[6,-4],[2,2],[7,9],[4,-8],[-9,-8]])
+x_limits = 20
+y_limits = 20
+ms = 6 #landmark size
 
-x_limits = (-20, 20)
-y_limits = (-20, 20)
-ms = 12 #landmark size
-N = np.size(landmarks,0)
+N = 14 #number of landmarks
+landmarks = np.random.uniform(-x_limits+1,x_limits-1,(N,2))
 mu = np.zeros(3+2*N)
 mu[0] = x0
 mu[1] = y0
@@ -41,3 +40,10 @@ Sig = np.exp(100.0)*np.identity(2*N + 3)
 Sig[0,0] = 0.0
 Sig[1,1] = 0.0
 Sig[2,2] = 0.0
+cov = np.zeros((3+2*N,np.size(t)))
+
+c = np.ones(N)
+detected_flag = np.zeros(N)
+fov = 180
+
+fov = np.pi*fov/180.0
