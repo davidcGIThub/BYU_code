@@ -1,6 +1,6 @@
 #data initialization file
 import numpy as np
-sec = 30
+sec = 60
 t = np.linspace(0,sec,sec/0.1+1)
 x_true = t * 0
 y_true = t * 0
@@ -28,7 +28,7 @@ sig_b = 0.05
 
 x_limits = 20
 y_limits = 20
-ms = 6 #landmark size
+ms = 5 #landmark size
 
 N = 14 #number of landmarks
 landmarks = np.random.uniform(-x_limits+1,x_limits-1,(N,2))
@@ -44,6 +44,6 @@ cov = np.zeros((3+2*N,np.size(t)))
 
 c = np.ones(N)
 detected_flag = np.zeros(N)
-fov = 180
+fov = 45
 
 fov = np.pi*fov/180.0

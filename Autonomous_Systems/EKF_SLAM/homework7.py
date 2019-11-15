@@ -20,7 +20,8 @@ ax.grid()
 robot_fig = plt.Polygon(rb.getPoints(),fc = 'g')
 robot_est_fig = plt.Polygon(rb_est.getPoints(),fill=False)
 lmd_figs, = ax.plot([],[], 'bo', ms=ms); 
-lmdMeas_figs, = ax.plot([],[], 'ko', fillstyle = 'none', ms=ms); 
+lmdMeas_figs, = ax.plot([],[], 'ko', fillstyle = 'none', ms=ms)
+cov_figs, =  ax.plot([],[], '.')
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
 
 def init():
@@ -29,8 +30,9 @@ def init():
     ax.add_patch(robot_est_fig)
     lmd_figs.set_data(landmarks[:,0],landmarks[:,1])
     lmdMeas_figs.set_data([],[])
+    cov_figs.set_data([],[])
     time_text.set_text('')
-    return robot_fig, robot_est_fig, lmd_figs, lmdMeas_figs, time_text
+    return robot_fig, robot_est_fig, cov_figs, lmd_figs, lmdMeas_figs, time_text
 
 def animate(i):
     global rb, rb_est, landmarks, t, vc, wc, mu, Sig, c , detected_flag
@@ -54,6 +56,10 @@ def animate(i):
     landmark_meas = np.reshape(mu[3:3+2*N],(N,2))
     lmdMeas_figs.set_data(landmark_meas[:,0], landmark_meas[:,1])
     lmdMeas_figs.set_markersize(ms)
+    #plot covariance bounds
+    cov[:,i] = Sig.diagonal()
+    points = measDevice.getCovariancePoints(mu[3:3+2*N],cov[:,i][3:3+2*N])
+    cov_figs.set_data(points[:,0], points[:,1])
     #update time
     time_text.set_text('time = %.1f' % t[i])
     #save state information
@@ -63,8 +69,7 @@ def animate(i):
     x_est[i] = mu[0]
     y_est[i] = mu[1]
     theta_est[i] = mu[2]
-    cov[:,i] = Sig.diagonal()
-    return robot_fig, robot_est_fig, lmd_figs, lmdMeas_figs, time_text
+    return robot_fig, robot_est_fig, lmd_figs, lmdMeas_figs, time_text, cov_figs
 
 from time import time
 animate(0)

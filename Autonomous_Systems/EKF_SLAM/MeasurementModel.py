@@ -39,3 +39,19 @@ class MeasurementModel:
         x = ranges*np.cos(bearings + reference[2]) + reference[0]
         y = ranges*np.sin(bearings + reference[2]) + reference[1]
         return np.concatenate((x,y),1)
+
+    def getCovariancePoints(self,m_est,cov):
+        N = int(np.size(m_est)/2)
+        points = np.zeros((4*N,2))
+        for i in range(0,N):
+            #x_values
+            points[4*i+0,0] = m_est[2*i] + cov[2*i] 
+            points[4*i+1,0] = m_est[2*i] - cov[2*i]
+            points[4*i+2,0] = m_est[2*i]
+            points[4*i+3,0] = m_est[2*i]
+            #y_values
+            points[4*i+0,1] = m_est[2*i+1]
+            points[4*i+1,1] = m_est[2*i+1] 
+            points[4*i+2,1] = m_est[2*i+1] + cov[2*i+1]
+            points[4*i+3,1] = m_est[2*i+1] - cov[2*i+1]
+        return points
