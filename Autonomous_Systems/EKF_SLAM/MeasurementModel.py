@@ -42,8 +42,18 @@ class MeasurementModel:
 
     def getCovariancePoints(self,m_est,cov):
         N = int(np.size(m_est)/2)
+        num_pts = 20
         points = np.zeros((4*N,2))
+        points2 = np.zeros((num_pts*N,2))
         for i in range(0,N):
+            P = np.array([[cov[2*i], 0],
+                          [0 , cov[2*i+1]]])
+            (U,S,V) = np.linalg.svd(P)
+            C = np.dot(U, np.sqrt(S)).flatten()
+            theta = np.linspace(0,2*np.pi,20)
+            circle = np.transpose(np.array([np.cos(theta), np.sin(theta)]))
+            ellipse = C*circle + np.array([m_est[2*i] , m_est[2*i+1]])
+            points2[num_pts*i:num_pts*i+num_pts] = ellipse
             #x_values
             points[4*i+0,0] = m_est[2*i] + cov[2*i] 
             points[4*i+1,0] = m_est[2*i] - cov[2*i]
@@ -54,4 +64,4 @@ class MeasurementModel:
             points[4*i+1,1] = m_est[2*i+1] 
             points[4*i+2,1] = m_est[2*i+1] + cov[2*i+1]
             points[4*i+3,1] = m_est[2*i+1] - cov[2*i+1]
-        return points
+        return points2

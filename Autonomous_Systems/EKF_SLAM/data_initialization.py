@@ -44,6 +44,6 @@ cov = np.zeros((3+2*N,np.size(t)))
 
 c = np.ones(N)
 detected_flag = np.zeros(N)
-fov = 45
+fov = 360
 
 fov = np.pi*fov/180.0

@@ -21,7 +21,7 @@ robot_fig = plt.Polygon(rb.getPoints(),fc = 'g')
 robot_est_fig = plt.Polygon(rb_est.getPoints(),fill=False)
 lmd_figs, = ax.plot([],[], 'bo', ms=ms); 
 lmdMeas_figs, = ax.plot([],[], 'ko', fillstyle = 'none', ms=ms)
-cov_figs, =  ax.plot([],[], '.')
+cov_figs, =  ax.plot([],[], '.', ms = .1)
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
 
 def init():
@@ -60,6 +60,7 @@ def animate(i):
     cov[:,i] = Sig.diagonal()
     points = measDevice.getCovariancePoints(mu[3:3+2*N],cov[:,i][3:3+2*N])
     cov_figs.set_data(points[:,0], points[:,1])
+    cov_figs.set_markersize(.5)
     #update time
     time_text.set_text('time = %.1f' % t[i])
     #save state information
@@ -78,6 +79,7 @@ ani = animation.FuncAnimation(fig, animate, frames = np.size(t),
                             interval = dt*100, blit = True, init_func = init, repeat = False)
 
 plt.show()
+
 
 err_bnd_x = 2*np.sqrt(cov[0][:])
 err_bnd_y = 2*np.sqrt(cov[1][:])
@@ -124,4 +126,8 @@ for i in range(0,N):
     ax2.plot(t[3:length],cov[4+2*i,3:length],label = i)
 ax2.legend()
 ax2.set(ylabel = 'covariance y_landmark pos')
+plt.show()
+
+fig4 = plt.figure()
+plt.imshow(Sig)
 plt.show()
