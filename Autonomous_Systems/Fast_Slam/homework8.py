@@ -4,14 +4,14 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from RobotMotion import RobotMotion as robot
 from MeasurementModel import MeasurementModel as mmd
-from ExtendedKalmanFilter import EKF
+from FastSLAM import Fast_SLAM as FS
 from data_initialization import *
 
 
 rb = robot(x0,y0,theta0,alpha1,alpha2,alpha3,alpha4,dt)
 rb_est = robot(x0,y0,theta0,alpha1,alpha2,alpha3,alpha4,dt)
 measDevice = mmd(sig_r,sig_b)
-ekf = EKF(dt,alpha,sig_r,sig_b)
+fs = FS(dt,alpha,sig_r,sig_b,pose_noise)
 
 fig = plt.figure()
 ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
@@ -35,7 +35,7 @@ def init():
     return robot_fig, robot_est_fig, cov_figs, lmd_figs, lmdMeas_figs, time_text
 
 def animate(i):
-    global rb, rb_est, landmarks, t, vc, wc, mu, Sig, c , detected_flag
+    global rb, rb_est, landmarks, t, vc, wc, pose, Sig, c , detected_flag, Y
     #propogate robot motion
     u = np.array([vc[i],wc[i]])
     rb.vel_motion_model(u)
@@ -46,31 +46,30 @@ def animate(i):
     (Bearings,c) = measDevice.getBearings(state,landmarks,fov)
     z = np.concatenate((Ranges,Bearings),1)
     #estimate robot motion
-    (mu, Sig) = ekf.EKF_SLAM(mu,Sig,u,z,c,detected_flag)
+    (Y, pose, features) = fs.fast_SLAM_1(z, c, u, Y, detected_flag)
     detected_flag[c > 0] = 1
-    rb_est.setState(mu[0],mu[1],mu[2])
-    #print("xy", mu[0], mu[1])
+    rb_est.setState(pose[0],pose[1],pose[2])
+    #print("xy", pose[0], pose[1])
     robot_est_fig.xy = rb_est.getPoints()
     #update landmark estimates
     #landmark_meas = measDevice.getLandmarkEstimates(state,Ranges,Bearings)
-    landmark_meas = np.reshape(mu[3:3+2*N],(N,2))
-    lmdMeas_figs.set_data(landmark_meas[:,0], landmark_meas[:,1])
-    lmdMeas_figs.set_markersize(ms)
+    #lmdMeas_figs.set_data(features[:,0], features[:,1])
+    #lmdMeas_figs.set_markersize(ms)
     #plot covariance bounds
-    cov[:,i] = Sig.diagonal()
-    points = measDevice.getCovariancePoints(mu[3:3+2*N],cov[:,i][3:3+2*N])
-    cov_figs.set_data(points[:,0], points[:,1])
-    cov_figs.set_markersize(.5)
+     #cov[:,i] = Sig.diagonal()
+     #points = measDevice.getCovariancePoints(pose[3:3+2*N],cov[:,i][3:3+2*N])
+     #cov_figs.set_data(points[:,0], points[:,1])
+     #cov_figs.set_markersize(.5)
     #update time
     time_text.set_text('time = %.1f' % t[i])
     #save state information
     x_true[i] = state[0]
     y_true[i] = state[1]
     theta_true[i] = state[2]
-    x_est[i] = mu[0]
-    y_est[i] = mu[1]
-    theta_est[i] = mu[2]
-    return robot_fig, robot_est_fig, lmd_figs, lmdMeas_figs, time_text, cov_figs
+    x_est[i] = pose[0]
+    y_est[i] = pose[1]
+    theta_est[i] = pose[2]
+    return robot_fig, robot_est_fig, time_text, lmd_figs, lmdMeas_figs
 
 from time import time
 animate(0)
@@ -81,9 +80,9 @@ ani = animation.FuncAnimation(fig, animate, frames = np.size(t),
 plt.show()
 
 
-err_bnd_x = 2*np.sqrt(cov[0][:])
-err_bnd_y = 2*np.sqrt(cov[1][:])
-err_bnd_th = 2*np.sqrt(cov[2][:])
+#err_bnd_x = 2*np.sqrt(cov[0][:])
+#err_bnd_y = 2*np.sqrt(cov[1][:])
+#err_bnd_th = 2*np.sqrt(cov[2][:])
 
 figure1, (ax1, ax2, ax3) = plt.subplots(3,1)
 ax1.plot(t,x_true, label = 'true')
@@ -97,7 +96,7 @@ ax3.plot(t,theta_true)
 ax3.plot(t,theta_est)
 ax3.set(ylabel = 'heading (deg)', xlabel= ("time (s)"))
 plt.show()
-
+'''
 figure2, (ax1, ax2, ax3) = plt.subplots(3,1)
 ax1.plot(t,x_true-x_est, label = 'error', color = 'b')
 ax1.plot(t,err_bnd_x, label = 'error_bound', color = 'r')
@@ -131,3 +130,4 @@ plt.show()
 fig4 = plt.figure()
 plt.imshow(Sig)
 plt.show()
+'''
