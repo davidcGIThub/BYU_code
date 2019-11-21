@@ -39,9 +39,9 @@ class Fast_SLAM:
             x = Y[i][0]
             y = Y[i][1]
             theta = Y[i][2]
-            x = Y_new[i][0] = x - vc*np.sin(theta)/wc + vc*np.sin(theta+wc*self.dt)/wc + np.random.randn() * self.pose_noise[0]
-            y = Y_new[i][1] = y + vc*np.cos(theta)/wc - vc*np.cos(theta+wc*self.dt)/wc + np.random.randn() * self.pose_noise[0]
-            theta = Y_new[i][2] = theta + wc*self.dt + np.random.randn() * self.pose_noise[1]
+            x = x - vc*np.sin(theta)/wc + vc*np.sin(theta+wc*self.dt)/wc #+ np.random.randn() * self.pose_noise[0]
+            y = y + vc*np.cos(theta)/wc - vc*np.cos(theta+wc*self.dt)/wc #+ np.random.randn() * self.pose_noise[0]
+            theta = Y_new[i][2] = theta + wc*self.dt #+ np.random.randn() * self.pose_noise[1]
             #should initialize w[i] differently????????? case if landmark hasnt been seen yet, should it be 0?
             #loop through all the features
             for j in range(0,N):
@@ -113,6 +113,8 @@ class Fast_SLAM:
                     Y_new[i][7+6*j] = Sigma[1,0]
                     Y_new[i][8+6*j] = Sigma[1,1]
         #what if no landmarks are seen?????
+            Y_new[i][0] = x
+            Y_new[i][1] = y
         # Resampling
         w = w / np.sum(w)  # normalize the weights
         Y_new = self.low_variance_sampler(Y_new, w, M)  # particles
