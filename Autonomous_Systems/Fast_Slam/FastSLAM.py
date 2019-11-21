@@ -26,14 +26,13 @@ class Fast_SLAM:
             ki[k - 1,:] = ki_bar[i, :]
         return ki
 
-    def fast_SLAM_1(self, z, c, u, Y, detected):
+    def fast_SLAM_1(self, z, c, u, Y, detected, features):
         M = np.size(Y,0)
         N = np.size(z,0)
         Y_new = np.copy(Y)
         vc = u[0]
         wc = u[1]
         w = np.ones(M)
-        features = np.zeros((N,2,M))
         #loop through all the particles
         for i in range(0,M):
             #estimate new pose for particle
@@ -64,7 +63,7 @@ class Fast_SLAM:
                         H = np.zeros((2,2))
                         H[0][0] = -(mu_x - x)/np.sqrt(q)
                         H[0][1] = -(mu_y - y)/np.sqrt(q)
-                        H[1][0] = -(mu_y - y)/q
+                        H[1][0] = (mu_y - y)/q
                         H[1][1] = -(mu_x - x)/q
                         Hinv = np.linalg.inv(H)
                         #initialize covariance for feature
@@ -85,12 +84,12 @@ class Fast_SLAM:
                         H = np.zeros((2,2))
                         H[0][0] = -(mu_x - x)/np.sqrt(q)
                         H[0][1] = -(mu_y - y)/np.sqrt(q)
-                        H[1][0] = -(mu_y - y)/q
+                        H[1][0] = (mu_y - y)/q
                         H[1][1] = -(mu_x - x)/q
                         #Measurement covariance
                         Q = np.dot(H , np.dot(Sigma , np.transpose(H))) + Qt
                         #calculate Kalman Gain
-                        K = np.dot(Sigma, np.dot(H , np.linalg.inv(Q)))
+                        K = np.dot(Sigma, np.dot(np.transpose(H) , np.linalg.inv(Q)))
                         #update feature mean
                         mu = np.array([[mu_x],[mu_y]]) + np.dot(K,z_diff)
                         mu_x = mu[0,0]
@@ -100,28 +99,28 @@ class Fast_SLAM:
                         #update importance factor
                         w[i] = w[i] * np.linalg.det(2*np.pi*Q)**(-1/2) * np.exp( -1/2 * np.dot(z_diff.flatten() , np.dot(np.linalg.inv(Q),z_diff)) )
                 #unobserved features
-                else:
+                #else:
                     #leave unchanged
-                    mu_x = Y[i][3+6*j]
-                    mu_y = Y[i][4+6*j]
-                    Sigma = np.array([ [ Y[i][5+6*j] , Y[i][6+6*j] ],
-                                       [ Y[i][7+6*j] , Y[i][8+6*j] ]])
+                    #mu_x = Y[i][3+6*j]
+                    #mu_y = Y[i][4+6*j]
+                    #Sigma = np.array([ [ Y[i][5+6*j] , Y[i][6+6*j] ],
+                    #                   [ Y[i][7+6*j] , Y[i][8+6*j] ]])
                 #assign feature values to new particles matrix
-                Y_new[i][3+6*j] = mu_x
-                Y_new[i][4+6*j] = mu_y
-                Y_new[i][5+6*j] = Sigma[0,0]
-                Y_new[i][6+6*j] = Sigma[0,1]
-                Y_new[i][7+6*j] = Sigma[1,0]
-                Y_new[i][8+6*j] = Sigma[1,1]
-                features[j,0,i] = mu_x
-                features[j,1,i] = mu_y
+                    Y_new[i][3+6*j] = mu_x
+                    Y_new[i][4+6*j] = mu_y
+                    Y_new[i][5+6*j] = Sigma[0,0]
+                    Y_new[i][6+6*j] = Sigma[0,1]
+                    Y_new[i][7+6*j] = Sigma[1,0]
+                    Y_new[i][8+6*j] = Sigma[1,1]
         #what if no landmarks are seen?????
         # Resampling
         w = w / np.sum(w)  # normalize the weights
         Y_new = self.low_variance_sampler(Y_new, w, M)  # particles
         x_ave = np.sum(Y_new[:,0])/M
-        y_ave = np.sum(Y_new[:,0])/M
-        th_ave = np.sum(Y_new[:,0])/M
+        y_ave = np.sum(Y_new[:,1])/M
+        th_ave = np.sum(Y_new[:,2])/M
         pose = np.array([x_ave,y_ave,th_ave])
-        features = np.sum(features,0)
+        for k in range(0,N):
+            features[k,0] = np.sum(Y_new[:,3+k*6])/M
+            features[k,1] = np.sum(Y_new[:,4+k*6])/M
         return Y_new,pose,features

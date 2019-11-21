@@ -18,6 +18,7 @@ ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
                      xlim=(-x_limits,x_limits), ylim=(-y_limits,y_limits))
 ax.grid()
 robot_fig = plt.Polygon(rb.getPoints(),fc = 'g')
+
 robot_est_fig = plt.Polygon(rb_est.getPoints(),fill=False)
 lmd_figs, = ax.plot([],[], 'bo', ms=ms); 
 lmdMeas_figs, = ax.plot([],[], 'ko', fillstyle = 'none', ms=ms)
@@ -35,7 +36,7 @@ def init():
     return robot_fig, robot_est_fig, cov_figs, lmd_figs, lmdMeas_figs, time_text
 
 def animate(i):
-    global rb, rb_est, landmarks, t, vc, wc, pose, Sig, c , detected_flag, Y
+    global rb, rb_est, landmarks, t, vc, wc, pose, Sig, c , detected_flag, Y, features
     #propogate robot motion
     u = np.array([vc[i],wc[i]])
     rb.vel_motion_model(u)
@@ -46,15 +47,15 @@ def animate(i):
     (Bearings,c) = measDevice.getBearings(state,landmarks,fov)
     z = np.concatenate((Ranges,Bearings),1)
     #estimate robot motion
-    (Y, pose, features) = fs.fast_SLAM_1(z, c, u, Y, detected_flag)
+    (Y, pose, features) = fs.fast_SLAM_1(z, c, u, Y, detected_flag, features)
     detected_flag[c > 0] = 1
     rb_est.setState(pose[0],pose[1],pose[2])
     #print("xy", pose[0], pose[1])
     robot_est_fig.xy = rb_est.getPoints()
     #update landmark estimates
-    #landmark_meas = measDevice.getLandmarkEstimates(state,Ranges,Bearings)
-    #lmdMeas_figs.set_data(features[:,0], features[:,1])
-    #lmdMeas_figs.set_markersize(ms)
+    landmark_meas = measDevice.getLandmarkEstimates(state,Ranges,Bearings)
+    lmdMeas_figs.set_data(features[:,0], features[:,1])
+    lmdMeas_figs.set_markersize(ms)
     #plot covariance bounds
      #cov[:,i] = Sig.diagonal()
      #points = measDevice.getCovariancePoints(pose[3:3+2*N],cov[:,i][3:3+2*N])
@@ -75,7 +76,7 @@ from time import time
 animate(0)
 
 ani = animation.FuncAnimation(fig, animate, frames = np.size(t), 
-                            interval = dt*100, blit = True, init_func = init, repeat = False)
+                            interval = dt*5000, blit = True, init_func = init, repeat = False)
 
 plt.show()
 

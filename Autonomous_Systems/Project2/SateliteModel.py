@@ -9,5 +9,7 @@ class SateliteModel:
 
     def orbitSatelites(self): #moves the satelite positions
 
-    def getPosition(self,reference): #returns the estimated position of the reference
+    def getDistance(self, reference): #returns tuple with an array of distance to each satelite, and  array of satelite locations
+
+    def getPosition(self,reference): #returns the estimated position of the reference using conventional gps
 

@@ -119,7 +119,7 @@ class EKF:
             H = np.zeros((2,3))
             H[0][0] = -(landmark[0] - mu[0])/np.sqrt(q)
             H[0][1] = -(landmark[1] - mu[1])/np.sqrt(q)
-            H[1][0] = -(landmark[1] - mu[1])/q
+            H[1][0] = (landmark[1] - mu[1])/q
             H[1][1] = -(landmark[0] - mu[0])/q
             H[1][2] = -1.0
             S = np.dot( H , np.dot(Sig_est,np.transpose(H)) ) + Q
