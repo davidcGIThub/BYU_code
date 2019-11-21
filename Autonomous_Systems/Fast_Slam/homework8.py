@@ -24,6 +24,7 @@ lmd_figs, = ax.plot([],[], 'bo', ms=ms);
 lmdMeas_figs, = ax.plot([],[], 'ko', fillstyle = 'none', ms=ms)
 cov_figs, =  ax.plot([],[], '.', ms = .1)
 time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+particles, = ax.plot([], [], 'ko', ms=1)
 
 def init():
     #initialize animation
@@ -31,9 +32,10 @@ def init():
     ax.add_patch(robot_est_fig)
     lmd_figs.set_data(landmarks[:,0],landmarks[:,1])
     lmdMeas_figs.set_data([],[])
-    cov_figs.set_data([],[])
+    #cov_figs.set_data([],[])
     time_text.set_text('')
-    return robot_fig, robot_est_fig, cov_figs, lmd_figs, lmdMeas_figs, time_text
+    particles.set_data([], [])
+    return robot_fig, robot_est_fig, cov_figs, lmd_figs, lmdMeas_figs, time_text, particles
 
 def animate(i):
     global rb, rb_est, landmarks, t, vc, wc, pose, Sig, c , detected_flag, Y, features
@@ -47,15 +49,18 @@ def animate(i):
     (Bearings,c) = measDevice.getBearings(state,landmarks,fov)
     z = np.concatenate((Ranges,Bearings),1)
     #estimate robot motion
-    (Y, pose, features) = fs.fast_SLAM_1(z, c, u, Y, detected_flag, features)
+    (Y, pose, features, particles_data) = fs.fast_SLAM_1(z, c, u, Y, detected_flag, features)
     detected_flag[c > 0] = 1
     rb_est.setState(pose[0],pose[1],pose[2])
     #print("xy", pose[0], pose[1])
     robot_est_fig.xy = rb_est.getPoints()
     #update landmark estimates
-    landmark_meas = measDevice.getLandmarkEstimates(state,Ranges,Bearings)
     lmdMeas_figs.set_data(features[:,0], features[:,1])
     lmdMeas_figs.set_markersize(ms)
+    # particles
+    print("particles_data", particles_data)
+    particles.set_data(particles_data[:, 0], particles_data[:, 1])
+    particles.set_markersize(1)
     #plot covariance bounds
      #cov[:,i] = Sig.diagonal()
      #points = measDevice.getCovariancePoints(pose[3:3+2*N],cov[:,i][3:3+2*N])
@@ -70,13 +75,13 @@ def animate(i):
     x_est[i] = pose[0]
     y_est[i] = pose[1]
     theta_est[i] = pose[2]
-    return robot_fig, robot_est_fig, time_text, lmd_figs, lmdMeas_figs
+    return robot_fig, robot_est_fig, time_text, lmd_figs, lmdMeas_figs, particles
 
 from time import time
 animate(0)
 
 ani = animation.FuncAnimation(fig, animate, frames = np.size(t), 
-                            interval = dt*5000, blit = True, init_func = init, repeat = False)
+                            interval = dt*1000, blit = True, init_func = init, repeat = False)
 
 plt.show()
 

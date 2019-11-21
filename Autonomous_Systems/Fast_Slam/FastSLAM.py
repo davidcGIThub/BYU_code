@@ -32,16 +32,20 @@ class Fast_SLAM:
         Y_new = np.copy(Y)
         vc = u[0]
         wc = u[1]
+        v_hat = vc + (self.alpha1 * vc**2 + self.alpha2 * wc**2) * np.random.randn()
+        w_hat = wc + (self.alpha3 * vc**2 + self.alpha4 * wc**2) * np.random.randn()
         w = np.ones(M)
+        particles = np.zeros((M*(N+1),2))
+        count = 0
         #loop through all the particles
         for i in range(0,M):
             #estimate new pose for particle
             x = Y[i][0]
             y = Y[i][1]
             theta = Y[i][2]
-            x = x - vc*np.sin(theta)/wc + vc*np.sin(theta+wc*self.dt)/wc #+ np.random.randn() * self.pose_noise[0]
-            y = y + vc*np.cos(theta)/wc - vc*np.cos(theta+wc*self.dt)/wc #+ np.random.randn() * self.pose_noise[0]
-            theta = Y_new[i][2] = theta + wc*self.dt #+ np.random.randn() * self.pose_noise[1]
+            x = x - v_hat*np.sin(theta)/w_hat + v_hat*np.sin(theta+w_hat*self.dt)/w_hat + np.random.randn() * self.pose_noise[0]
+            y = y + v_hat*np.cos(theta)/w_hat - v_hat*np.cos(theta+w_hat*self.dt)/w_hat + np.random.randn() * self.pose_noise[0]
+            theta = theta + w_hat*self.dt + np.random.randn() * self.pose_noise[1]
             #should initialize w[i] differently????????? case if landmark hasnt been seen yet, should it be 0?
             #loop through all the features
             for j in range(0,N):
@@ -61,10 +65,10 @@ class Fast_SLAM:
                         #Calculate Jacobian
                         q = (mu_x - x)**2 + (mu_y - y)**2
                         H = np.zeros((2,2))
-                        H[0][0] = -(mu_x - x)/np.sqrt(q)
-                        H[0][1] = -(mu_y - y)/np.sqrt(q)
-                        H[1][0] = (mu_y - y)/q
-                        H[1][1] = -(mu_x - x)/q
+                        H[0][0] = (mu_x - x)/np.sqrt(q)
+                        H[0][1] = (mu_y - y)/np.sqrt(q)
+                        H[1][0] = -(mu_y - y)/q
+                        H[1][1] = (mu_x - x)/q
                         Hinv = np.linalg.inv(H)
                         #initialize covariance for feature
                         Sigma = np.dot( Hinv , np.dot(Qt,np.transpose(Hinv)) )
@@ -82,10 +86,10 @@ class Fast_SLAM:
                         z_diff[1,0] -= np.pi * 2 * np.floor((z_diff[1,0] + np.pi) / (2 * np.pi))
                         #calculate Jacobian
                         H = np.zeros((2,2))
-                        H[0][0] = -(mu_x - x)/np.sqrt(q)
-                        H[0][1] = -(mu_y - y)/np.sqrt(q)
-                        H[1][0] = (mu_y - y)/q
-                        H[1][1] = -(mu_x - x)/q
+                        H[0][0] = (mu_x - x)/np.sqrt(q)
+                        H[0][1] = (mu_y - y)/np.sqrt(q)
+                        H[1][0] = -(mu_y - y)/q
+                        H[1][1] = (mu_x - x)/q
                         #Measurement covariance
                         Q = np.dot(H , np.dot(Sigma , np.transpose(H))) + Qt
                         #calculate Kalman Gain
@@ -98,23 +102,29 @@ class Fast_SLAM:
                         Sigma = np.dot( (np.eye(2) - np.dot(K,H)) , Sigma)
                         #update importance factor
                         w[i] = w[i] * np.linalg.det(2*np.pi*Q)**(-1/2) * np.exp( -1/2 * np.dot(z_diff.flatten() , np.dot(np.linalg.inv(Q),z_diff)) )
-                #unobserved features
-                #else:
+                else:
                     #leave unchanged
-                    #mu_x = Y[i][3+6*j]
-                    #mu_y = Y[i][4+6*j]
-                    #Sigma = np.array([ [ Y[i][5+6*j] , Y[i][6+6*j] ],
-                    #                   [ Y[i][7+6*j] , Y[i][8+6*j] ]])
+                    mu_x = Y[i][3+6*j]
+                    mu_y = Y[i][4+6*j]
+                    Sigma = np.array([ [ Y[i][5+6*j] , Y[i][6+6*j] ],
+                                       [ Y[i][7+6*j] , Y[i][8+6*j] ]])
                 #assign feature values to new particles matrix
-                    Y_new[i][3+6*j] = mu_x
-                    Y_new[i][4+6*j] = mu_y
-                    Y_new[i][5+6*j] = Sigma[0,0]
-                    Y_new[i][6+6*j] = Sigma[0,1]
-                    Y_new[i][7+6*j] = Sigma[1,0]
-                    Y_new[i][8+6*j] = Sigma[1,1]
+                Y_new[i][3+6*j] = mu_x
+                Y_new[i][4+6*j] = mu_y
+                Y_new[i][5+6*j] = Sigma[0,0]
+                Y_new[i][6+6*j] = Sigma[0,1]
+                Y_new[i][7+6*j] = Sigma[1,0]
+                Y_new[i][8+6*j] = Sigma[1,1]
+                particles[count,0] = mu_x
+                particles[count,1] = mu_y
+                count = count + 1
         #what if no landmarks are seen?????
             Y_new[i][0] = x
             Y_new[i][1] = y
+            Y_new[i][2] = theta
+            particles[count,0] = x
+            particles[count,1] = y
+            count = count + 1
         # Resampling
         w = w / np.sum(w)  # normalize the weights
         Y_new = self.low_variance_sampler(Y_new, w, M)  # particles
@@ -122,7 +132,8 @@ class Fast_SLAM:
         y_ave = np.sum(Y_new[:,1])/M
         th_ave = np.sum(Y_new[:,2])/M
         pose = np.array([x_ave,y_ave,th_ave])
+
         for k in range(0,N):
             features[k,0] = np.sum(Y_new[:,3+k*6])/M
             features[k,1] = np.sum(Y_new[:,4+k*6])/M
-        return Y_new,pose,features
+        return Y_new,pose,features, particles

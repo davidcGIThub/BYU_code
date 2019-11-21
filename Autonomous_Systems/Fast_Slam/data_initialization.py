@@ -2,13 +2,13 @@
 import numpy as np
 
 #time parameters
-sec = 20
+sec = 20.0
 dt = 0.1
 t = np.linspace(0,sec,sec/dt+1)
 
 #Grid layout
-x_limits = 20
-y_limits = 20
+x_limits = 20.0
+y_limits = 20.0
 ms = 5 #landmark size
 
 #initial conditions
@@ -38,8 +38,8 @@ fov = np.pi*fov/180.0
 #initialize the particles
 pose_init = np.tile(pose,(M,1))
 feature_init = np.tile(np.array([x_limits-.5 , y_limits-.5, np.inf, 0, 0, np.inf]),(M,N)) * np.random.uniform(-1,1,(M,N*6))
-feature_init[feature_init == np.inf] = np.exp(50)
-feature_init[feature_init == -np.inf] = np.exp(50)
+feature_init[feature_init == np.inf] = np.exp(50.0)
+feature_init[feature_init == -np.inf] = np.exp(50.0)
 Y = np.concatenate((pose_init, feature_init),1)
 features = np.copy(landmarks)
 for i in range(0,N):
@@ -51,7 +51,7 @@ c = np.ones(N)
 detected_flag = np.zeros(N)
 
 #Input commands
-vc = 1 + 0.5*np.cos(2.0*np.pi*.2*t)
+vc = 1.0 + 0.5*np.cos(2.0*np.pi*.2*t)
 wc = -0.2 + 2*np.cos(2*np.pi*0.6*t)
 
 #storage vectors
