@@ -26,7 +26,7 @@ class Fast_SLAM:
             ki[k - 1,:] = ki_bar[i, :]
         return ki
 
-    def fast_SLAM_1(self, z, c, u, Y, detected, features):
+    def fast_SLAM_1(self, z, c, u, Y, detected):
         M = np.size(Y,0)
         N = np.size(z,0)
         Y_new = np.copy(Y)
@@ -35,18 +35,36 @@ class Fast_SLAM:
         v_hat = vc + (self.alpha1 * vc**2 + self.alpha2 * wc**2) * np.random.randn()
         w_hat = wc + (self.alpha3 * vc**2 + self.alpha4 * wc**2) * np.random.randn()
         w = np.ones(M)
-        particles = np.zeros((M*(N+1),2))
-        count = 0
         #loop through all the particles
         for i in range(0,M):
             #estimate new pose for particle
             x = Y[i][0]
             y = Y[i][1]
             theta = Y[i][2]
-            x = x - v_hat*np.sin(theta)/w_hat + v_hat*np.sin(theta+w_hat*self.dt)/w_hat + np.random.randn() * self.pose_noise[0]
-            y = y + v_hat*np.cos(theta)/w_hat - v_hat*np.cos(theta+w_hat*self.dt)/w_hat + np.random.randn() * self.pose_noise[0]
-            theta = theta + w_hat*self.dt + np.random.randn() * self.pose_noise[1]
-            #should initialize w[i] differently????????? case if landmark hasnt been seen yet, should it be 0?
+            x = x - v_hat*np.sin(theta)/w_hat + v_hat*np.sin(theta+w_hat*self.dt)/w_hat 
+            y = y + v_hat*np.cos(theta)/w_hat - v_hat*np.cos(theta+w_hat*self.dt)/w_hat 
+            theta = theta + w_hat*self.dt 
+            ####### custom correction noise ######
+            z_diff_ave = np.array([[0],[0]])
+            count = 0
+            for j in range(0,N):
+                if c[j] == True:
+                    Range = z[j,0]
+                    Bearing = z[j,1]
+                    if detected[j] == True:
+                        mu_x = Y[i][3+6*j]
+                        mu_y = Y[i][4+6*j]
+                        q = (mu_x - x)**2 + (mu_y - y)**2
+                        b = np.arctan2(mu_y - y, mu_x - x) - theta
+                        z_hat = np.array([[np.sqrt(q)] , [b]])
+                        z_diff = np.array([[Range] , [Bearing]]) - z_hat
+                        z_diff[1,0] -= np.pi * 2 * np.floor((z_diff[1,0] + np.pi) / (2 * np.pi))
+                        z_diff_ave = z_diff_ave + z_diff
+                        count = count + 1.0
+            x = x + z_diff_ave[0,0] * np.random.randn()
+            y = y + z_diff_ave[0,0] * np.random.randn()
+            theta = theta + z_diff_ave[1,0] * np.random.randn()
+            #######             #######             ######
             #loop through all the features
             for j in range(0,N):
                 #if feature was detected
@@ -115,25 +133,11 @@ class Fast_SLAM:
                 Y_new[i][6+6*j] = Sigma[0,1]
                 Y_new[i][7+6*j] = Sigma[1,0]
                 Y_new[i][8+6*j] = Sigma[1,1]
-                particles[count,0] = mu_x
-                particles[count,1] = mu_y
-                count = count + 1
         #what if no landmarks are seen?????
             Y_new[i][0] = x
             Y_new[i][1] = y
             Y_new[i][2] = theta
-            particles[count,0] = x
-            particles[count,1] = y
-            count = count + 1
         # Resampling
         w = w / np.sum(w)  # normalize the weights
         Y_new = self.low_variance_sampler(Y_new, w, M)  # particles
-        x_ave = np.sum(Y_new[:,0])/M
-        y_ave = np.sum(Y_new[:,1])/M
-        th_ave = np.sum(Y_new[:,2])/M
-        pose = np.array([x_ave,y_ave,th_ave])
-
-        for k in range(0,N):
-            features[k,0] = np.sum(Y_new[:,3+k*6])/M
-            features[k,1] = np.sum(Y_new[:,4+k*6])/M
-        return Y_new,pose,features, particles
+        return Y_new

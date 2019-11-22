@@ -49,23 +49,38 @@ def animate(i):
     (Bearings,c) = measDevice.getBearings(state,landmarks,fov)
     z = np.concatenate((Ranges,Bearings),1)
     #estimate robot motion
-    (Y, pose, features, particles_data) = fs.fast_SLAM_1(z, c, u, Y, detected_flag, features)
-    detected_flag[c > 0] = 1
+    Y = fs.fast_SLAM_1(z, c, u, Y, detected_flag)
+    x_ave = np.mean(Y[:,0])
+    y_ave = np.mean(Y[:,1])
+    th_ave = np.mean(Y[:,2])
+    pose = np.array([x_ave,y_ave,th_ave])
     rb_est.setState(pose[0],pose[1],pose[2])
-    #print("xy", pose[0], pose[1])
+    #adjust flags
+    detected_flag[c > 0] = 1
     robot_est_fig.xy = rb_est.getPoints()
     #update landmark estimates
     lmdMeas_figs.set_data(features[:,0], features[:,1])
     lmdMeas_figs.set_markersize(ms)
-    # particles
-    print("particles_data", particles_data)
-    particles.set_data(particles_data[:, 0], particles_data[:, 1])
-    particles.set_markersize(1)
+    x_particles = Y[:,0]
+    y_particles = Y[:,1]
+    temp_cov = np.zeros(2*N)
+    for k in range(0,N):
+        features[k,0] = np.mean(Y[:,3+k*6])
+        features[k,1] = np.mean(Y[:,4+k*6])
+        x_particles = np.append(x_particles,Y[:,3+k*6])
+        y_particles = np.append(y_particles,Y[:,4+k*6])
+        temp_cov[2*k] = np.mean(Y[:,5+k*6])
+        temp_cov[2*k+1] = np.mean(Y[:,8+k*6])
+    particles_data = np.concatenate((x_particles[:,None],y_particles[:,None]),1)
+    #particles
+    if(show_particles):
+        particles.set_data(particles_data[:, 0], particles_data[:, 1])
+        particles.set_markersize(1)
     #plot covariance bounds
-     #cov[:,i] = Sig.diagonal()
-     #points = measDevice.getCovariancePoints(pose[3:3+2*N],cov[:,i][3:3+2*N])
-     #cov_figs.set_data(points[:,0], points[:,1])
-     #cov_figs.set_markersize(.5)
+    cov[:,i] = temp_cov
+    points = measDevice.getCovariancePoints(features,cov[:,i])
+    cov_figs.set_data(points[:,0], points[:,1])
+    cov_figs.set_markersize(.5)
     #update time
     time_text.set_text('time = %.1f' % t[i])
     #save state information
@@ -75,7 +90,7 @@ def animate(i):
     x_est[i] = pose[0]
     y_est[i] = pose[1]
     theta_est[i] = pose[2]
-    return robot_fig, robot_est_fig, time_text, lmd_figs, lmdMeas_figs, particles
+    return robot_fig, robot_est_fig, time_text, lmd_figs, lmdMeas_figs, particles, cov_figs
 
 from time import time
 animate(0)

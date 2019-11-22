@@ -7,8 +7,8 @@ dt = 0.1
 t = np.linspace(0,sec,sec/dt+1)
 
 #Grid layout
-x_limits = 20.0
-y_limits = 20.0
+x_limits = 10.0
+y_limits = 10.0
 ms = 5 #landmark size
 
 #initial conditions
@@ -17,7 +17,7 @@ y0 = -3.0 #m
 theta0 = np.pi/2.0 #rad
 state = np.array([x0,y0,theta0])
 pose = np.array([x0,y0,theta0])
-N = 5 #num landmarks
+N = 9 #num landmarks
 landmarks = np.random.uniform(-x_limits+1,x_limits-1,(N,2))
 M = 100 #number of particles
 
@@ -32,7 +32,7 @@ sig_b = 0.05
 pose_noise = np.array([0.5,0.1])
 
 #Measurement Parameters
-fov = 360
+fov = 180
 fov = np.pi*fov/180.0
 
 #initialize the particles
@@ -45,6 +45,7 @@ features = np.copy(landmarks)
 for i in range(0,N):
         features[i,0] = np.sum(Y[:,3+i*6])/M
         features[i,1] = np.sum(Y[:,4+i*6])/M
+show_particles = False
 
 #Detection flags
 c = np.ones(N)
@@ -61,3 +62,5 @@ theta_true = t * 0
 x_est = t * 0
 y_est = t * 0
 theta_est = t * 0
+cov = np.zeros((2*N,np.size(t)))
+
