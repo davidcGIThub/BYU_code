@@ -32,39 +32,18 @@ class Fast_SLAM:
         Y_new = np.copy(Y)
         vc = u[0]
         wc = u[1]
-        v_hat = vc + (self.alpha1 * vc**2 + self.alpha2 * wc**2) * np.random.randn()
-        w_hat = wc + (self.alpha3 * vc**2 + self.alpha4 * wc**2) * np.random.randn()
         w = np.ones(M)
         #loop through all the particles
         for i in range(0,M):
             #estimate new pose for particle
+            v_hat = vc + (self.alpha1 * vc**2 + self.alpha2 * wc**2) * np.random.randn()
+            w_hat = wc + (self.alpha3 * vc**2 + self.alpha4 * wc**2) * np.random.randn()
             x = Y[i][0]
             y = Y[i][1]
             theta = Y[i][2]
             x = x - v_hat*np.sin(theta)/w_hat + v_hat*np.sin(theta+w_hat*self.dt)/w_hat 
             y = y + v_hat*np.cos(theta)/w_hat - v_hat*np.cos(theta+w_hat*self.dt)/w_hat 
             theta = theta + w_hat*self.dt 
-            ####### custom correction noise ######
-            z_diff_ave = np.array([[0],[0]])
-            count = 0
-            for j in range(0,N):
-                if c[j] == True:
-                    Range = z[j,0]
-                    Bearing = z[j,1]
-                    if detected[j] == True:
-                        mu_x = Y[i][3+6*j]
-                        mu_y = Y[i][4+6*j]
-                        q = (mu_x - x)**2 + (mu_y - y)**2
-                        b = np.arctan2(mu_y - y, mu_x - x) - theta
-                        z_hat = np.array([[np.sqrt(q)] , [b]])
-                        z_diff = np.array([[Range] , [Bearing]]) - z_hat
-                        z_diff[1,0] -= np.pi * 2 * np.floor((z_diff[1,0] + np.pi) / (2 * np.pi))
-                        z_diff_ave = z_diff_ave + z_diff
-                        count = count + 1.0
-            x = x + z_diff_ave[0,0] * np.random.randn()
-            y = y + z_diff_ave[0,0] * np.random.randn()
-            theta = theta + z_diff_ave[1,0] * np.random.randn()
-            #######             #######             ######
             #loop through all the features
             for j in range(0,N):
                 #if feature was detected
