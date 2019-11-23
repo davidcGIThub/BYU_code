@@ -32,7 +32,7 @@ sig_b = 0.05
 pose_noise = np.array([0.5,0.1])
 
 #Measurement Parameters
-fov = 180
+fov = 360
 fov = np.pi*fov/180.0
 
 #initialize the particles
@@ -45,7 +45,7 @@ features = np.copy(landmarks)
 for i in range(0,N):
         features[i,0] = np.sum(Y[:,3+i*6])/M
         features[i,1] = np.sum(Y[:,4+i*6])/M
-show_particles = False
+show_particles = True
 
 #Detection flags
 c = np.ones(N)
