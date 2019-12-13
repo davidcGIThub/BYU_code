@@ -10,12 +10,11 @@ r = np.array([[-100 , 100], #r(x1,u1) r(x2,u1)
               [-1   , -1]]) #r(x1,u3) r(x2,u3)
 cost_u3 = 1.0
 p_x1n_u3 = np.array([0.2, 0.8]) #p(x1'|x1,u3) p(x1'|x2,u3)
-p_x2n_u3 = np.array([0.8, 0.2]) #p(x2'|x1,u3) p(x2'|x2,u3)
 
 p_z1_x = np.array([0.7, 0.3]) #p(z1|x1) p(z1|x2)
 p_z2_x = np.array([0.3, 0.7]) #p(z2|x1) p(z2|x2)
 horizon = 20
-image_num = 20
+image_num = 1
 
 #control calculations
 r_bu1 = p1*r[0,0] + (1-p1)*r[0,1] #p1*r(x1,u) + p2*r(x2,u)
