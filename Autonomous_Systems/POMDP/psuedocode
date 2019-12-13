@@ -1,0 +1,46 @@
+EQ = [cost_0(p=0) cost_0(p=1);
+      ...;
+      cost_0(p=0) cost_0(p=1)]
+
+for T:
+    EQ = Sense(EQ)
+    EQ = Prune(EQ)
+    EQ = Predict(EQ)
+    EQ = Prune(EQ)
+end
+
+########
+
+Sense(EQ):
+    *** Initialization
+    P_zi[i,i] = P_success
+    P_zi[!i,!i] = P_unsuccessful
+    ***
+    V_z1 = EQ * P_z1
+    V_z2 = EQ * P_z2
+    EQ = Every permutation of (V_z1[number_of_lines] + V_z2[number_of_lines])
+
+    return EQ
+
+Predict(EQ):
+    *** Initialization
+    Prop_P = [P_success, P_unsuccessful;
+              P_unsuccessful, P_success]
+    EQ_cost_ui = [ui(p=0) ui(p=1)]
+    ***
+    EQ = EQ * Prop_P - ones
+    EQ = [EQ_u1;
+          EQ_u2;
+          EQ]
+
+    Return EQ
+
+Prune(EQ):
+    *** Initialization
+    P = [0:dx:1;
+         1:-dx:0]
+    ***
+    Indices = Unique( argmax(EQ * P, axis=col) )
+    EQ = EQ(Indices)
+
+    Return EQ
