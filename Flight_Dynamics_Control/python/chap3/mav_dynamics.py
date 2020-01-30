@@ -10,7 +10,7 @@ part of mavsimPy
         1/14/2019 - RWB
 """
 import sys
-sys.path.append('..')
+sys.path.append('/home/david/BYU_code/Flight_Dynamics_Control/python/')
 import numpy as np
 
 # load message types
@@ -25,16 +25,19 @@ class mav_dynamics:
         # set initial states based on parameter file
         # _state is the 13x1 internal state of the aircraft that is being propagated:
         # _state = [pn, pe, pd, u, v, w, e0, e1, e2, e3, p, q, r]
-        self._state = np.array([
-                                ])
+        self._state = np.array([[MAV.pn0], [MAV.pe0], [MAV.pd0], [MAV.u0], [MAV.v0], [MAV.w0], [MAV.e0], [MAV.e1], [MAV.e2], [MAV.e3], [MAV.p0], [MAV.q0], [MAV.r0]])
+        self.mass = MAV.mass
+        self.Jx = MAV.Jx
+        self.Jy = MAV.Jy
+        self.Jz = MAV.Jz
+        self.Jxz = MAV.Jxz
         self.msg_true_state = msg_state()
 
     ###################################
     # public functions
     def update_state(self, forces_moments):
         '''
-
-            Integrate the differential equations defining dynamics. 
+            Integrate the differential equations defining dynamics.
             Inputs are the forces and moments on the aircraft.
             Ts is the time step between function calls.
         '''
@@ -90,25 +93,34 @@ class mav_dynamics:
         n = forces_moments.item(5)
 
         # position kinematics
-        pn_dot =
-        pe_dot =
-        pd_dot =
+        pn_dot = u*(e1**2+e0**2-e2**2-e3**2) + v*2*(e1*e2-e3*e0) + w*2*(e1*e3+e2*e0)
+        pe_dot = u*2*(e1*e2+e3*e0) + v*(e2**2+e0**2-e1**2-e3**2) + w*2*(e2*e3-e1*e0)
+        pd_dot = u*2*(e1*e3-e2*e0) + v*2*(e2*e3+e1*e0) + w*(e3**2+e0**2-e1**2-e2**2)
 
         # position dynamics
-        u_dot =
-        v_dot =
-        w_dot =
+        u_dot = r*v - q*w + fx/self.mass
+        v_dot = p*w - r*u + fy/self.mass
+        w_dot = q*u - p*v + fz/self.mass
 
         # rotational kinematics
-        e0_dot =
-        e1_dot =
-        e2_dot =
-        e3_dot =
+        e0_dot = (-p*e1 - e2*q - e3*r) / 2
+        e1_dot = (e0*p + e2*r - e3*q) / 2
+        e2_dot = (e0*q - e1*r + e3*p) / 2
+        e3_dot = (e0*r + e1*q -e2*p) / 2
 
         # rotatonal dynamics
-        p_dot =
-        q_dot =
-        r_dot = 
+        Gamma = self.Jx*self.Jz - self.Jxz**2
+        Gamma1 = (self.Jxz*(self.Jx-self.Jy+self.Jz))/Gamma
+        Gamma2 = (self.Jz*(self.Jz-self.Jy)+self.Jxz**2)/Gamma
+        Gamma3 = self.Jz/Gamma
+        Gamma4 = self.Jxz/Gamma
+        Gamma5 = (self.Jz-self.Jx)/self.Jy
+        Gamma6 = self.Jxz/self.Jy
+        Gamma7 = ((self.Jx-self.Jy)*self.Jx+self.Jxz**2)/Gamma
+        Gamma8 = self.Jx/Gamma
+        p_dot = Gamma1*p*q - Gamma2*q*r + Gamma3*l + Gamma4*n
+        q_dot = Gamma5*p*r - Gamma6*(p**2-r**2) + m/self.Jy
+        r_dot = Gamma7*p*q - Gamma1*q*r + Gamma4*l + Gamma8*n
 
         # collect the derivative of the states
         x_dot = np.array([[pn_dot, pe_dot, pd_dot, u_dot, v_dot, w_dot,

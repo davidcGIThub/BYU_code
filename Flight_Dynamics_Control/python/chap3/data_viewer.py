@@ -1,5 +1,9 @@
+import sys
+sys.path.append('/home/david/BYU_code/Flight_Dynamics_Control/python/')
+
 from state_plotter.Plotter import Plotter
 from state_plotter.plotter_args import *
+
 
 class data_viewer:
     def __init__(self):
