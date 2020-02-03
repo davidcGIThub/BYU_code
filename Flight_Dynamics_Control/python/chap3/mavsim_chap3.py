@@ -6,7 +6,7 @@ mavsimPy
         1/14/2019 - RWB
 """
 import sys
-sys.path.append('/home/david/BYU_code/Flight_Dynamics_Control/python/')
+sys.path.append('..')
 import numpy as np
 import parameters.simulation_parameters as SIM
 
@@ -28,13 +28,13 @@ sim_time = SIM.start_time
 
 # main simulation loop
 print("Press Command-Q to exit...")
-while sim_time < SIM.end_time: 
+while sim_time < SIM.end_time:
     #-------vary forces and moments to check dynamics-------------
     fx = 0 #10
     fy = 0 # 10
-    fz = 0 # 10
+    fz = -20 # 10
     Mx = 0 # 0.1
-    My = 0 # 0.1
+    My = 0.01 # 0.1
     Mz = 0 # 0.1
     forces_moments = np.array([[fx, fy, fz, Mx, My, Mz]]).T
 
@@ -43,9 +43,9 @@ while sim_time < SIM.end_time:
     #-------update viewer-------------
     mav_view.update(mav.msg_true_state)  # plot body of MAV
     data_view.update(mav.msg_true_state, # true states
-                     mav.msg_true_state, # estimated states
-                     mav.msg_true_state, # commanded states
-                     SIM.ts_simulation)
+                      mav.msg_true_state, # estimated states
+                      mav.msg_true_state, # commanded states
+                      SIM.ts_simulation)
     #-------increment time-------------
     sim_time += SIM.ts_simulation
 

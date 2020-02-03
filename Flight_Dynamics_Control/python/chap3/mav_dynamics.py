@@ -10,7 +10,7 @@ part of mavsimPy
         1/14/2019 - RWB
 """
 import sys
-sys.path.append('/home/david/BYU_code/Flight_Dynamics_Control/python/')
+sys.path.append('..')
 import numpy as np
 
 # load message types

@@ -23,27 +23,30 @@ class mav_dynamics:
         # We will also need a variety of other elements that are functions of the _state and the wind.
         # self.true_state is a 19x1 vector that is estimated and used by the autopilot to control the aircraft:
         # true_state = [pn, pe, h, Va, alpha, beta, phi, theta, chi, p, q, r, Vg, wn, we, psi, gyro_bx, gyro_by, gyro_bz]
-        self._state = np.array([[MAV.pn0],  # (0)
-                               [MAV.pe0],   # (1)
-                               [MAV.pd0],   # (2)
-                               [MAV.u0],    # (3)
-                               [MAV.v0],    # (4)
-                               [MAV.w0],    # (5)
-                               [MAV.e0],    # (6)
-                               [MAV.e1],    # (7)
-                               [MAV.e2],    # (8)
-                               [MAV.e3],    # (9)
-                               [MAV.p0],    # (10)
-                               [MAV.q0],    # (11)
-                               [MAV.r0]])   # (12)
+
+        self._state = np.array([[MAV.pn0],  # (0)  # inertial north position
+                               [MAV.pe0],   # (1)  # inertial east position
+                               [MAV.pd0],   # (2)  # inertial down position, neg of altitude
+                               [MAV.u0],    # (3)  # Body frame velocity nose direction (i)
+                               [MAV.v0],    # (4)  # Body frame velocity right wing direction (j)
+                               [MAV.w0],    # (5)  # Body frame velocity down direction (l)
+                                                   # Quaternion rotation from inertial frame to the body frame
+                               [MAV.e0],    # (6)  # related to scalar part of rotation = cos(theta/2)
+                               [MAV.e1],    # (7)  # related to vector we are rotating about = v*sin(theta/2)
+                               [MAV.e2],    # (8)  # " "
+                               [MAV.e3],    # (9)  # " "
+                               [MAV.p0],    # (10) # roll rate in body frame
+                               [MAV.q0],    # (11) # pitch rate in body frame
+                               [MAV.r0]])   # (12) # yaw rate in body frame
+
         # store wind data for fast recall since it is used at various points in simulation
-        self._wind = np.array([[0.], [0.], [0.]])  # wind in NED frame in meters/sec
+        self._wind = np.array([[0.], [0.], [0.]])  # wind in NED frame in meters/sec (velocity of wind [uw, vw, ww])
         self._update_velocity_data()
         # store forces to avoid recalculation in the sensors function
-        self._forces = np.array([[0.], [0.], [0.]])
-        self._Va = MAV.u0
-        self._alpha = 0
-        self._beta = 0
+        self._forces = np.array([[0.], [0.], [0.]]) #forces acting on mav in body frame [fx,fy,fz]
+        self._Va = MAV.u0 # velocity magnitude of airframe relative to airmass
+        self._alpha = 0 #angle of attack
+        self._beta = 0  #sideslip angle
         # initialize true_state message
         self.msg_true_state = msg_state()
 
@@ -52,7 +55,7 @@ class mav_dynamics:
     def update_state(self, delta, wind):
         '''
             Integrate the differential equations defining dynamics, update sensors
-            delta = (delta_a, delta_e, delta_r, delta_t) are the control inputs
+            delta = (delta_a, delta_e, delta_r, delta_t) are the control inputs (aileron, elevator, rudder, thrust??)
             wind is the wind vector in inertial coordinates
             Ts is the time step between function calls.
         '''
@@ -87,15 +90,87 @@ class mav_dynamics:
     ###################################
     # private functions
     def _derivatives(self, state, forces_moments):
+        # extract the states
+        pn = state.item(0)
+        pe = state.item(1)
+        pd = state.item(2)
+        u = state.item(3)
+        v = state.item(4)
+        w = state.item(5)
+        e0 = state.item(6)
+        e1 = state.item(7)
+        e2 = state.item(8)
+        e3 = state.item(9)
+        p = state.item(10)
+        q = state.item(11)
+        r = state.item(12)
+        #   extract forces/moments
+        fx = forces_moments.item(0)
+        fy = forces_moments.item(1)
+        fz = forces_moments.item(2)
+        l = forces_moments.item(3)
+        m = forces_moments.item(4)
+        n = forces_moments.item(5)
+
+        # position kinematics
+        pn_dot = u*(e1**2+e0**2-e2**2-e3**2) + v*2*(e1*e2-e3*e0) + w*2*(e1*e3+e2*e0)
+        pe_dot = u*2*(e1*e2+e3*e0) + v*(e2**2+e0**2-e1**2-e3**2) + w*2*(e2*e3-e1*e0)
+        pd_dot = u*2*(e1*e3-e2*e0) + v*2*(e2*e3+e1*e0) + w*(e3**2+e0**2-e1**2-e2**2)
+
+        # position dynamics
+        u_dot = r*v - q*w + fx/self.mass
+        v_dot = p*w - r*u + fy/self.mass
+        w_dot = q*u - p*v + fz/self.mass
+
+        # rotational kinematics
+        e0_dot = (-p*e1 - e2*q - e3*r) / 2
+        e1_dot = (e0*p + e2*r - e3*q) / 2
+        e2_dot = (e0*q - e1*r + e3*p) / 2
+        e3_dot = (e0*r + e1*q -e2*p) / 2
+
+        # rotatonal dynamics
+        Gamma = self.Jx*self.Jz - self.Jxz**2
+        Gamma1 = (self.Jxz*(self.Jx-self.Jy+self.Jz))/Gamma
+        Gamma2 = (self.Jz*(self.Jz-self.Jy)+self.Jxz**2)/Gamma
+        Gamma3 = self.Jz/Gamma
+        Gamma4 = self.Jxz/Gamma
+        Gamma5 = (self.Jz-self.Jx)/self.Jy
+        Gamma6 = self.Jxz/self.Jy
+        Gamma7 = ((self.Jx-self.Jy)*self.Jx+self.Jxz**2)/Gamma
+        Gamma8 = self.Jx/Gamma
+        p_dot = Gamma1*p*q - Gamma2*q*r + Gamma3*l + Gamma4*n
+        q_dot = Gamma5*p*r - Gamma6*(p**2-r**2) + m/self.Jy
+        r_dot = Gamma7*p*q - Gamma1*q*r + Gamma4*l + Gamma8*n
+
+        # collect the derivative of the states
+        x_dot = np.array([[pn_dot, pe_dot, pd_dot, u_dot, v_dot, w_dot,
+                           e0_dot, e1_dot, e2_dot, e3_dot, p_dot, q_dot, r_dot]]).T
         return x_dot
 
     def _update_velocity_data(self, wind=np.zeros((6,1))):
+        # wind 
+        #   The first three elements are the steady state wind in the inertial frame
+        #   The second three elements are the gust in the body frame
+        roll, pitch, yaw = Quaternion2Euler(self._state[6:10])
         # compute airspeed
-        self._Va =
+        u = self._state[3] # Body frame velocity nose direction (i)
+        v = self._state[4] # Body frame velocity right wing direction (j)
+        w = self._state[5] # Body frame velocity down direction (k)
+        Rbv = np.array([[np.cos(pitch)*np.cos(yaw) , np.cos(pitch)*np.sin(yaw) , -np.sin(pitch)], #rotation from vehicle frame to the body frame
+                        [np.sin(roll)*np.sin(pitch)*np.cos(yaw)-np.cos(roll)*np.sin(yaw) , np.sin(roll)*np.sin(pitch)*np.sin(yaw)+np.cos(roll)*np.cos(yaw) , np.sin(roll)*np.cos(pitch)],
+                        [np.cos(roll)*np.sin(pitch)*np.cos(yaw)+np.sin(roll)*np.sin(yaw) , np.cos(roll)*np.sin(pitch)*np.sin(yaw)-np.sin(roll)*np.cos(yaw) , np.cos(roll)*np.cos(pitch)]])
+        Vws = np.dot(Rbv * wind[0:3][:,None]) # ambient wind body frame
+        Vwg = wind[3:6][:,None]               # gust wind in body frame
+        Vw = Vws + Vwg                        # total wind in body frame
+        Vba = np.array([[u],[v],[w]]) - Vw    # airspeed vector (aircraft relative to airmass)
+        self._Va = np.linalg.norm(Vba)        # magnitude of airspeed vector
         # compute angle of attack
-        self._alpha =
+        ur = Vba[0]
+        vr = Vba[1]
+        wr = Vba[2]
+        self._alpha = np.arctan2(wr,ur)
         # compute sideslip angle
-        self._beta =
+        self._beta = np.arcsin(vr/(self._Va))
 
     def _forces_moments(self, delta):
         """
