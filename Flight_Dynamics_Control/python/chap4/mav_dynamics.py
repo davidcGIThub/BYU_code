@@ -118,9 +118,9 @@ class mav_dynamics:
         pd_dot = u*2*(e1*e3-e2*e0) + v*2*(e2*e3+e1*e0) + w*(e3**2+e0**2-e1**2-e2**2)
 
         # position dynamics
-        u_dot = r*v - q*w + fx/self.mass
-        v_dot = p*w - r*u + fy/self.mass
-        w_dot = q*u - p*v + fz/self.mass
+        u_dot = r*v - q*w + fx/MAV.mass
+        v_dot = p*w - r*u + fy/MAV.mass
+        w_dot = q*u - p*v + fz/MAV.mass
 
         # rotational kinematics
         e0_dot = (-p*e1 - e2*q - e3*r) / 2
@@ -129,17 +129,17 @@ class mav_dynamics:
         e3_dot = (e0*r + e1*q -e2*p) / 2
 
         # rotatonal dynamics
-        Gamma = self.Jx*self.Jz - self.Jxz**2
-        Gamma1 = (self.Jxz*(self.Jx-self.Jy+self.Jz))/Gamma
-        Gamma2 = (self.Jz*(self.Jz-self.Jy)+self.Jxz**2)/Gamma
-        Gamma3 = self.Jz/Gamma
-        Gamma4 = self.Jxz/Gamma
-        Gamma5 = (self.Jz-self.Jx)/self.Jy
-        Gamma6 = self.Jxz/self.Jy
-        Gamma7 = ((self.Jx-self.Jy)*self.Jx+self.Jxz**2)/Gamma
-        Gamma8 = self.Jx/Gamma
+        Gamma = MAV.Jx*MAV.Jz - MAV.Jxz**2
+        Gamma1 = (MAV.Jxz*(MAV.Jx-MAV.Jy+MAV.Jz))/Gamma
+        Gamma2 = (MAV.Jz*(MAV.Jz-MAV.Jy)+MAV.Jxz**2)/Gamma
+        Gamma3 = MAV.Jz/Gamma
+        Gamma4 = MAV.Jxz/Gamma
+        Gamma5 = (MAV.Jz-MAV.Jx)/MAV.Jy
+        Gamma6 = MAV.Jxz/MAV.Jy
+        Gamma7 = ((MAV.Jx-MAV.Jy)*MAV.Jx+MAV.Jxz**2)/Gamma
+        Gamma8 = MAV.Jx/Gamma
         p_dot = Gamma1*p*q - Gamma2*q*r + Gamma3*l + Gamma4*n
-        q_dot = Gamma5*p*r - Gamma6*(p**2-r**2) + m/self.Jy
+        q_dot = Gamma5*p*r - Gamma6*(p**2-r**2) + m/MAV.Jy
         r_dot = Gamma7*p*q - Gamma1*q*r + Gamma4*l + Gamma8*n
 
         # collect the derivative of the states
@@ -178,6 +178,8 @@ class mav_dynamics:
         :param delta: np.matrix(delta_a, delta_e, delta_r, delta_t)
         :return: Forces and Moments on the UAV np.matrix(Fx, Fy, Fz, Ml, Mn, Mm)
         """
+        #forces due to gravity
+        Fgx = -
         self._forces[0] = fx
         self._forces[1] = fy
         self._forces[2] = fz
