@@ -36,16 +36,16 @@ Jx = 0.8244 #kg m^2
 Jy = 1.135
 Jz = 1.759
 Jxz = 0.1204
-S_wing = 0.55
-b = 2.8956
-c = 0.18994
-S_prop = 0.2027
-rho = 1.2682
+S_wing = 0.55 #wing area
+b = 2.8956 #wing span
+c = 0.18994 #chord length 
+S_prop = 0.2027 
+rho = 1.2682 #air density
 k_motor = 80
 kTp = 0.0
 kOmega = 0.0
-e = 0.9
-AR = (b**2) / S_wing
+e = 0.9  #oswald efficiency factor
+AR = (b**2) / S_wing  #wing aspect ratio
 gravity = 9.8
 
 ######################################################################################
