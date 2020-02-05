@@ -206,7 +206,6 @@ class mav_dynamics:
         Cz_alpha = -Cd_alpha*np.sin(self._alpha) - Cl_alpha*np.cos(self._alpha)
         Czq_alpha = -MAV.C_D_q*np.sin(self._alpha) - C_L_q*np.cos(self._alpha)
         Czdele_alpha = -MAV.C_D_delta_e*np.sin(self._alpha) - C_L_delta_e*np.cos(self._alpha)
-
         rhoVaS = 0.5*MAV.rho*(self._Va**2)*MAV.S_wing
         Fax = rhoVaS * (Cx_alpha + Cxq_alpha*MAV.c/(2*self._Va)*q + Cxdele_alpha*delta_e)
         Fay = rhoVaS * (MAV.C_Y_0 + MAV.C_Y_beta*self._beta + MAV.C_Y_p*MAV.b/(2*self._Va)*p \
@@ -214,11 +213,38 @@ class mav_dynamics:
         Faz = rhoVaS * (Cz_alpha + Czq_alpha*MAV.c/(2*self._Va)*q + Czdele_alpha*delta_e)
 
         #forces from props
+        Vin = MAV.V_max*delta_t
+        a = MAV.rho*(MAV.D_prop**5)*MAV.C_Q0/(2*np.pi)**2
+        b = MAV.rho*(MAV.D_prop**4)*MAV.C_Q1*self._Va/(2*np.pi) + MAV.KQ*MAV.K_V/MAV.R_motor
+        c = MAV.rho*(MAV.D_prop**3)*MAV.C_Q2*self._Va**2 - MAV.KQ*Vin/MAV.R + MAV.KQ*MAV.i0
+        omega_p = (-b + np.sqrt(b**2 - 4*a*c)) / (2*a)
+        Tp = (MAV.rho*(MAV.D_prop**4)*MAV.C_T0)*(omega_p**2) / (4*np.pi**2) + \
+            (MAV.rho*(MAV.D_prop**3)*C_T1*self._Va*omega_p)/(2*np.pi) +\
+            (MAV.rho*(MAV.D_prop**2)*C_T2*self._Va**2)
 
+        #Total Forces
+        fx = Fgx + Fax + Tp
+        fy = Fgy + Fay
+        fz = Fgz + Faz
         
-        #momennt from air
+        #moment from air
+        Ma_x = rhoVaS * MAV.b * (MAV.C_ell_0 + MAV.C_ell_beta*self._beta + MAV.C_ell_p*MAV.b*p/(2*self._Va) + \
+            MAV.C_ell_r*MAV.b*r/(2*self._Va) + MAV.C_ell_delta_a*delta_a + C_ell_delta_r*delta_r)
+        Ma_y = rhoVaS * MAV.c * (MAV.C_m_0 + MAV.C_m_alpha*self._alpha + MAV.C_m_q*MAV.c*q/(2*self._Va) + \
+            C_m_delta_e*delta_e)
+        Ma_z = rhoVaS * MAV.b * (MAV.C_n_0 + MAV.C_n_beta*self._beta + MAV.C_n_p*MAV.b*p/(2*self._Va) + C_n_r*MAV.b*r/(2*self._Va) + \
+            MAV.C_n_delta_a*delta_a + MAV.C_n_delta_r*delta_r)
 
         #moment from props
+        Qp = (MAV.rho*(MAV.D_prop**5)*MAV.C_Q0*omega_p**2)/(4*np.pi**2) + \
+            (MAV.rho*(MAV.D_prop**4)*MAV.C_Q1*self._Va*omega_p) / (2*np.pi) + \
+            (MAV.rho*(MAV.D_prop**3)*MAV.C_Q2*self._Va**2)
+
+        #Total Moment
+        Mx = Ma_x + Qp
+        My = Ma_y 
+        Mz = Ma_z 
+
         self._forces[0] = fx
         self._forces[1] = fy
         self._forces[2] = fz
