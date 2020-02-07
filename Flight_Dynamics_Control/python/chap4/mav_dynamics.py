@@ -110,11 +110,15 @@ class mav_dynamics:
         Va = np.array([self._state[3][0],self._state[4][0],self._state[5][0]])[:,None]
         Vg = np.dot(self.Rbv.T,Va)
         self.Vg = np.linalg.norm(Vg)
-        #update heading
-        north = np.array([1,0,0])
-        Vg_ij_plane = np.array([ Vg[0][0], Vg[1][0] , 0 ])
-        self.gamma = np.arccos( np.dot(north,Vg_ij_plane[:None]) / (np.linalg.norm(Vg_ij_plane) * np.linalg.norm(north) ) )
-        self.chi = np.arccos( np.dot(Vg_ij_plane, Vg) / (np.linalg.norm(Vg_ij_plane) * np.linalg.norm(Vg) ) )
+        if self.Vg == 0:
+            self.gamma = self.gamma
+            self.chi = self.chi
+        else:
+            #update heading
+            north = np.array([1,0,0])
+            Vg_ij_plane = np.array([ Vg[0][0], Vg[1][0] , 0 ])
+            self.gamma = np.arccos( np.dot(north,Vg_ij_plane[:None]) / (np.linalg.norm(Vg_ij_plane) * np.linalg.norm(north) ) )
+            self.chi = np.arccos( np.dot(Vg_ij_plane, Vg) / (np.linalg.norm(Vg_ij_plane) * np.linalg.norm(Vg) ) )
 
         # update the airspeed, angle of attack, and side slip angles using new state
         self._update_velocity_data(wind)
@@ -177,23 +181,25 @@ class mav_dynamics:
         # wind 
         #   The first three elements are the steady state wind in the inertial frame
         #   The second three elements are the gust in the body frame
-        
         # compute airspeed
-        u = self._state[3] # Body frame velocity nose direction (i)
-        v = self._state[4] # Body frame velocity right wing direction (j)
-        w = self._state[5] # Body frame velocity down direction (k)
+        u = self._state[3,0] # Body frame velocity nose direction (i)
+        v = self._state[4,0] # Body frame velocity right wing direction (j)
+        w = self._state[5,0] # Body frame velocity down direction (k)
         Vws = np.dot(self.Rbv , wind[0:3]) # ambient wind body frame
-        Vwg = wind[3:6][:,None]               # gust wind in body frame
+        Vwg = wind[3:6]              # gust wind in body frame
         Vw = Vws + Vwg                        # total wind in body frame
         Vba = np.array([[u],[v],[w]]) - Vw    # airspeed vector (aircraft relative to airmass)
         self._Va = np.linalg.norm(Vba)        # magnitude of airspeed vector
         # compute angle of attack
-        ur = Vba[0][0]
-        vr = Vba[1][0]
-        wr = Vba[2][0]
-        self._alpha = np.arctan2(wr,ur)[0]
+        ur = Vba[0,0]
+        vr = Vba[1,0]
+        wr = Vba[2,0]
+        self._alpha = np.arctan2(wr,ur)
         # compute sideslip angle
-        self._beta = np.arcsin(vr/(self._Va))
+        if (self._Va == 0):
+            self._beta = 0
+        else:
+            self._beta = np.arcsin(vr/(self._Va))
 
     def _forces_moments(self, delta):
         """
@@ -226,33 +232,52 @@ class mav_dynamics:
         Czq_alpha = -MAV.C_D_q*np.sin(self._alpha) - MAV.C_L_q*np.cos(self._alpha)
         Czdele_alpha = -MAV.C_D_delta_e*np.sin(self._alpha) - MAV.C_L_delta_e*np.cos(self._alpha)
         rhoVaS = 0.5*MAV.rho*(self._Va**2)*MAV.S_wing
-        Fax = rhoVaS * (Cx_alpha + Cxq_alpha*MAV.c/(2*self._Va)*q + Cxdele_alpha*delta_e)
-        Fay = rhoVaS * (MAV.C_Y_0 + MAV.C_Y_beta*self._beta + MAV.C_Y_p*MAV.b/(2*self._Va)*p \
-            + MAV.C_Y_r*MAV.b/(2*self._Va)*r + MAV.C_Y_delta_a*delta_a + MAV.C_Y_delta_r*delta_r)
-        Faz = rhoVaS * (Cz_alpha + Czq_alpha*MAV.c/(2*self._Va)*q + Czdele_alpha*delta_e)
+        if self._Va == 0:
+            Fax = 0
+            Fay = 0
+            Faz = 0
+        else:
+            Fax = rhoVaS * (Cx_alpha + Cxq_alpha*MAV.c/(2*self._Va)*q + Cxdele_alpha*delta_e)
+            Fay = rhoVaS * (MAV.C_Y_0 + MAV.C_Y_beta*self._beta + MAV.C_Y_p*MAV.b/(2*self._Va)*p \
+                + MAV.C_Y_r*MAV.b/(2*self._Va)*r + MAV.C_Y_delta_a*delta_a + MAV.C_Y_delta_r*delta_r)
+            Faz = rhoVaS * (Cz_alpha + Czq_alpha*MAV.c/(2*self._Va)*q + Czdele_alpha*delta_e)
 
         #forces from props
         Vin = MAV.V_max*delta_t
+        print("Vin")
+        print(Vin)
         a = MAV.rho*(MAV.D_prop**5)*MAV.C_Q0/(2*np.pi)**2
         b = MAV.rho*(MAV.D_prop**4)*MAV.C_Q1*self._Va/(2*np.pi) + MAV.KQ*MAV.K_V/MAV.R_motor
         c = MAV.rho*(MAV.D_prop**3)*MAV.C_Q2*self._Va**2 - MAV.KQ*Vin/MAV.R_motor + MAV.KQ*MAV.i0
         omega_p = (-b + np.sqrt(b**2 - 4*a*c)) / (2*a)
+        print("omega_p")
+        print(omega_p)
         Tp = (MAV.rho*(MAV.D_prop**4)*MAV.C_T0)*(omega_p**2) / (4*np.pi**2) + \
             (MAV.rho*(MAV.D_prop**3)*MAV.C_T1*self._Va*omega_p)/(2*np.pi) +\
             (MAV.rho*(MAV.D_prop**2)*MAV.C_T2*self._Va**2)
-
+        print("Tp")
+        print(Tp)
         #Total Forces
         fx = Fgx + Fax + Tp
+        print("fx")
+        print(fx)
         fy = Fgy + Fay
         fz = Fgz + Faz
 
+#1. compute trim, and initial conditions to trim values then your plane should hold that for most of the simulation. variables plotted should be flat lining
+#2. print out all of the transfer function coefficients. print all equations, for fun excite longitudinal and lateral dynamics.
         #moment from air
-        Ma_x = rhoVaS * MAV.b * (MAV.C_ell_0 + MAV.C_ell_beta*self._beta + MAV.C_ell_p*MAV.b*p/(2*self._Va) + \
-            MAV.C_ell_r*MAV.b*r/(2*self._Va) + MAV.C_ell_delta_a*delta_a + MAV.C_ell_delta_r*delta_r)
-        Ma_y = rhoVaS * MAV.c * (MAV.C_m_0 + MAV.C_m_alpha*self._alpha + MAV.C_m_q*MAV.c*q/(2*self._Va) + \
-            MAV.C_m_delta_e*delta_e)
-        Ma_z = rhoVaS * MAV.b * (MAV.C_n_0 + MAV.C_n_beta*self._beta + MAV.C_n_p*MAV.b*p/(2*self._Va) + MAV.C_n_r*MAV.b*r/(2*self._Va) + \
-            MAV.C_n_delta_a*delta_a + MAV.C_n_delta_r*delta_r)
+        if self._Va == 0:
+            Ma_x = 0
+            Ma_y = 0
+            Ma_z = 0
+        else:
+            Ma_x = rhoVaS * MAV.b * (MAV.C_ell_0 + MAV.C_ell_beta*self._beta + MAV.C_ell_p*MAV.b*p/(2*self._Va) + \
+                MAV.C_ell_r*MAV.b*r/(2*self._Va) + MAV.C_ell_delta_a*delta_a + MAV.C_ell_delta_r*delta_r)
+            Ma_y = rhoVaS * MAV.c * (MAV.C_m_0 + MAV.C_m_alpha*self._alpha + MAV.C_m_q*MAV.c*q/(2*self._Va) + \
+                MAV.C_m_delta_e*delta_e)
+            Ma_z = rhoVaS * MAV.b * (MAV.C_n_0 + MAV.C_n_beta*self._beta + MAV.C_n_p*MAV.b*p/(2*self._Va) + MAV.C_n_r*MAV.b*r/(2*self._Va) + \
+                MAV.C_n_delta_a*delta_a + MAV.C_n_delta_r*delta_r)
 
         #moment from props
         Qp = (MAV.rho*(MAV.D_prop**5)*MAV.C_Q0*omega_p**2)/(4*np.pi**2) + \
@@ -267,9 +292,9 @@ class mav_dynamics:
         self._forces[0][0] = fx
         self._forces[1][0] = fy
         self._forces[2][0] = fz
-        fx = 0
+        #fx = 0
         fy = 0
-        #fz = 0
+        fz = 0
         Mx = 0
         My = 0
         Mz = 0
