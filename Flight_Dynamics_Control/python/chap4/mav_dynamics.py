@@ -191,7 +191,7 @@ class mav_dynamics:
         ur = Vba[0][0]
         vr = Vba[1][0]
         wr = Vba[2][0]
-        self._alpha = np.arctan2(wr,ur)
+        self._alpha = np.arctan2(wr,ur)[0]
         # compute sideslip angle
         self._beta = np.arcsin(vr/(self._Va))
 
@@ -210,7 +210,6 @@ class mav_dynamics:
         Fgx = -MAV.mass*MAV.gravity*np.sin(self.theta)
         Fgy = MAV.mass*MAV.gravity*np.cos(self.theta)*np.sin(self.phi)
         Fgz = MAV.mass*MAV.gravity*np.cos(self.theta)*np.cos(self.phi)
-
         #forces due to air
         p = self._state[10][0]
         q = self._state[11][0]
@@ -268,6 +267,13 @@ class mav_dynamics:
         self._forces[0][0] = fx
         self._forces[1][0] = fy
         self._forces[2][0] = fz
+        fx = 0
+        fy = 0
+        #fz = 0
+        Mx = 0
+        My = 0
+        Mz = 0
+
         return np.array([[fx, fy, fz, Mx, My, Mz]]).T
 
     def _update_msg_true_state(self):
