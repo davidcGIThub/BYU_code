@@ -244,23 +244,15 @@ class mav_dynamics:
 
         #forces from props
         Vin = MAV.V_max*delta_t
-        print("Vin")
-        print(Vin)
         a = MAV.rho*(MAV.D_prop**5)*MAV.C_Q0/(2*np.pi)**2
-        b = MAV.rho*(MAV.D_prop**4)*MAV.C_Q1*self._Va/(2*np.pi) + MAV.KQ*MAV.K_V/MAV.R_motor
+        b = MAV.rho*(MAV.D_prop**4)*MAV.C_Q1*self._Va/(2*np.pi) + MAV.KQ**2/MAV.R_motor
         c = MAV.rho*(MAV.D_prop**3)*MAV.C_Q2*self._Va**2 - MAV.KQ*Vin/MAV.R_motor + MAV.KQ*MAV.i0
         omega_p = (-b + np.sqrt(b**2 - 4*a*c)) / (2*a)
-        print("omega_p")
-        print(omega_p)
         Tp = (MAV.rho*(MAV.D_prop**4)*MAV.C_T0)*(omega_p**2) / (4*np.pi**2) + \
             (MAV.rho*(MAV.D_prop**3)*MAV.C_T1*self._Va*omega_p)/(2*np.pi) +\
             (MAV.rho*(MAV.D_prop**2)*MAV.C_T2*self._Va**2)
-        print("Tp")
-        print(Tp)
         #Total Forces
         fx = Fgx + Fax + Tp
-        print("fx")
-        print(fx)
         fy = Fgy + Fay
         fz = Fgz + Faz
 
@@ -288,16 +280,10 @@ class mav_dynamics:
         Mx = Ma_x + Qp
         My = Ma_y 
         Mz = Ma_z 
-        #print(self._forces[0][0])
+        
         self._forces[0][0] = fx
         self._forces[1][0] = fy
         self._forces[2][0] = fz
-        #fx = 0
-        fy = 0
-        fz = 0
-        Mx = 0
-        My = 0
-        Mz = 0
 
         return np.array([[fx, fy, fz, Mx, My, Mz]]).T
 
