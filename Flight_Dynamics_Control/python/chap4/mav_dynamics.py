@@ -140,6 +140,8 @@ class mav_dynamics:
         e1 = state.item(7)
         e2 = state.item(8)
         e3 = state.item(9)
+        print("e0")
+        print(e0)
         p = state.item(10)
         q = state.item(11)
         r = state.item(12)
@@ -251,6 +253,7 @@ class mav_dynamics:
         Tp = (MAV.rho*(MAV.D_prop**4)*MAV.C_T0)*(omega_p**2) / (4*np.pi**2) + \
             (MAV.rho*(MAV.D_prop**3)*MAV.C_T1*self._Va*omega_p)/(2*np.pi) +\
             (MAV.rho*(MAV.D_prop**2)*MAV.C_T2*self._Va**2)
+        
         #Total Forces
         fx = Fgx + Fax + Tp
         fy = Fgy + Fay
