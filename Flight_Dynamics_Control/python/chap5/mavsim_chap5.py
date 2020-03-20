@@ -27,11 +27,11 @@ wind = wind_simulation(SIM.ts_simulation)
 mav = mav_dynamics(SIM.ts_simulation)
 
 # use compute_trim function to compute trim state and trim input
-Va0 = np.sqrt(MAV.u0**2 + MAV.v0**2 + MAV.w0**2)
-gamma = 10.*np.pi/180.
+Va0 = 25
+gamma = 0#10.0*np.pi/180.
 delta0 = np.array([[0],[0],[0],[0.5]])  #   [delta_e, delta_a, delta_r, delta_t]
 trim_state, trim_input = compute_trim(mav, delta0, Va0, gamma)
-mav._state = trim_state  # set the initial state of the mav to the trim state
+mav.set_state(trim_state)  # set the initial state of the mav to the trim state
 delta = trim_input  # set input to constant trim input
 
 # # compute the state space model linearized about trim

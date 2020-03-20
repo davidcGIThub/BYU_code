@@ -33,10 +33,10 @@ sim_time = SIM.start_time
 print("Press Command-Q to exit...")
 while sim_time < SIM.end_time:
     #-------set control surfaces-------------
-    delta_e = -0.09
-    delta_t = 1.0
     delta_a = -0.0185
+    delta_e = -0.09
     delta_r = 0.0 # 0.005
+    delta_t = 1.0
     delta = np.array([[delta_a, delta_e, delta_r, delta_t]]).T  # transpose to make it a column vector
 
     #-------physical system-------------

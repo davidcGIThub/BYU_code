@@ -12,7 +12,7 @@ import numpy as np
 from message_types.msg_state import msg_state
 
 import parameters.aerosonde_parameters as MAV
-from tools.tools import Quaternion2Euler, Quaternion2Euler
+from tools.tools import Quaternion2Euler
 
 class mav_dynamics:
     def __init__(self, Ts):
@@ -46,20 +46,30 @@ class mav_dynamics:
         self._update_velocity_data()
         # store forces to avoid recalculation in the sensors function
         self._forces = np.array([[0.], [0.], [0.]]) #forces acting on mav in body frame [fx,fy,fz]
-        self._Va = np.sqrt(MAV.u0**2 + MAV.v0**2 + MAV.w0**2) # velocity magnitude of airframe relative to airmass
+        self._Va = MAV.Va0 # velocity magnitude of airframe relative to airmass
         self._alpha = 0 #angle of attack
         self._beta = 0  #sideslip angle
-        self.phi = 0 # roll
-        self.theta = 0 # pitch
-        self.psi = 0 #yaw
-        self.Vg = np.linalg.norm(np.dot(self.Rbv.T,self._Va))
+        temp1, temp2, temp3 = Quaternion2Euler(self._state[6:10])
+        self.phi = temp1[0] # roll
+        self.theta = temp2[0] # pitch
+        self.psi = temp3[0] #yaw
         self.gamma = 0 #flight path angle (pitch up from horizontal velocity)
         self.chi = 0 #course angle (heading)
+        self.Vg = np.linalg.norm(np.dot(self.Rbv.T,np.array([[MAV.u0],[MAV.v0],[MAV.w0]])))
         # initialize true_state message
         self.msg_true_state = msg_state()
+        self.breakpoint = True
 
     ###################################
     # public functions
+    def set_state(self,state):
+        self._state = state
+        temp1, temp2, temp3 = Quaternion2Euler(self._state[6:10])
+        self.phi = temp1[0] # roll
+        self.theta = temp2[0] # pitch
+        self.psi = temp3[0] #yaw
+
+
     def update_state(self, delta, wind=np.zeros((6,1))):
         '''
             Integrate the differential equations defining dynamics, update sensors
@@ -107,8 +117,8 @@ class mav_dynamics:
                             np.cos(self.phi)*np.sin(self.theta)*np.sin(self.psi)-np.sin(self.phi)*np.cos(self.psi) , 
                             np.cos(self.phi)*np.cos(self.theta)]])
         #update inertial velocity
-        Va = np.array([self._state[3][0],self._state[4][0],self._state[5][0]])[:,None]
-        Vg = np.dot(self.Rbv.T,Va)
+        Vb = np.array([self._state[3][0],self._state[4][0],self._state[5][0]])[:,None]
+        Vg = np.dot(self.Rbv.T,Vb)
         self.Vg = np.linalg.norm(Vg)
         if self.Vg == 0:
             self.gamma = self.gamma
@@ -140,8 +150,6 @@ class mav_dynamics:
         e1 = state.item(7)
         e2 = state.item(8)
         e3 = state.item(9)
-        print("e0")
-        print(e0)
         p = state.item(10)
         q = state.item(11)
         r = state.item(12)
@@ -243,6 +251,18 @@ class mav_dynamics:
             Fay = rhoVaS * (MAV.C_Y_0 + MAV.C_Y_beta*self._beta + MAV.C_Y_p*MAV.b/(2*self._Va)*p \
                 + MAV.C_Y_r*MAV.b/(2*self._Va)*r + MAV.C_Y_delta_a*delta_a + MAV.C_Y_delta_r*delta_r)
             Faz = rhoVaS * (Cz_alpha + Czq_alpha*MAV.c/(2*self._Va)*q + Czdele_alpha*delta_e)
+        # if(self.breakpoint):
+        #     print("rhoVaS")
+        #     print(rhoVaS)
+        #     print("Cx_alpha")
+        #     print(Cx_alpha)
+        #     print("Cxq_alpha")
+        #     print(Cxq_alpha)
+        #     print("MAV.c")
+        #     print(MAV.c)
+        #     print("Cxdele_alpha")
+        #     print(Cxdele_alpha)
+        #     self.breakpoint = False
 
         #forces from props
         Vin = MAV.V_max*delta_t
@@ -253,15 +273,18 @@ class mav_dynamics:
         Tp = (MAV.rho*(MAV.D_prop**4)*MAV.C_T0)*(omega_p**2) / (4*np.pi**2) + \
             (MAV.rho*(MAV.D_prop**3)*MAV.C_T1*self._Va*omega_p)/(2*np.pi) +\
             (MAV.rho*(MAV.D_prop**2)*MAV.C_T2*self._Va**2)
-<<<<<<< HEAD
-=======
-        
->>>>>>> 8a938e2c8ef4c3f9b5d0e0e93214cf12c3c62639
         #Total Forces
         fx = Fgx + Fax + Tp
         fy = Fgy + Fay
         fz = Fgz + Faz
-
+        if(self.breakpoint):
+             print("Fgx")
+             print(Fgx)
+             print("Fax")
+             print(Fax)
+             print("Tp")
+             print(Tp)
+             self.breakpoint = False
 #1. compute trim, and initial conditions to trim values then your plane should hold that for most of the simulation. variables plotted should be flat lining
 #2. print out all of the transfer function coefficients. print all equations, for fun excite longitudinal and lateral dynamics.
         #moment from air

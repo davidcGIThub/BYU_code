@@ -11,10 +11,11 @@ import numpy as np
 from scipy.optimize import minimize
 import copy as cp
 import parameters.simulation_parameters as SIM
+from tools import tools
 from chap4.mav_dynamics import mav_dynamics
 
 
-def compute_trim(mav, delta, Va, gamma, R = 10000.0):
+def compute_trim(mav, delta, Va, gamma, R = 100000.0):
     # define initial state and input
     state0 = cp.deepcopy(mav._state) #[[pn],[pe],[pd],[u],[v],[w],[e0],[e1],[e2],[e3],[p],[q],[r]]
     delta0 = cp.deepcopy(delta) # [delta_e, delta_a, delta_r, delta_t]
@@ -44,19 +45,21 @@ def compute_trim(mav, delta, Va, gamma, R = 10000.0):
                                 ])
              })
     # solve the minimization problem to find the trim states and inputs
+    mav._state = state0
+    mav._update_velocity_data()
+    forces_moments = mav._forces_moments(delta0)
+    xdot = mav._derivatives(mav._state, forces_moments)
 
-    res = minimize(trim_objective_fun, x0, method='SLSQP', args=(mav, Va, gamma),
+    res = minimize(trim_objective_fun, x0, method='SLSQP', args=(mav, Va, gamma,R),
                    constraints=cons, options={'ftol': 1e-10, 'disp': True})
     # extract trim state and input and return
     trim_state = np.array([res.x[0:13]]).T
     trim_input = np.array([res.x[13:17]]).T
-    print('trim_state=', trim_state.T)
-    print('trim_input=', trim_input.T)
     return trim_state, trim_input
 
 # objective function to be minimized
-def trim_objective_fun(x, mav, Va, gamma, R = 100000):
-    x_dot_star = np.array([[Va*np.sin(gamma)],      #h_dot*
+def trim_objective_fun(x, mav, Va, gamma, R = 1000000):
+    x_dot_star = np.array([[-Va*np.sin(gamma)],      #-h_dot*
                         [0],                    #u_dot*
                         [0],                    #v_dot*
                         [0],                    #w_dot*
@@ -66,13 +69,20 @@ def trim_objective_fun(x, mav, Va, gamma, R = 100000):
                         [0],                    #p_dot*
                         [0],                    #q_dot*
                         [0]])                   #r_dot*
-
-    mav_temp = mav_dynamics(SIM.ts_simulation)
-    state = np.array([x[0:13]]).T
+    mav.set_state(np.array([x[0:13]]).T)
+    mav._update_velocity_data()
     delta = np.array([x[13:17]]).T
-    mav_temp._state = state
-    forces_moments = mav_temp._forces_moments(delta)
-    x_dot = mav_temp._derivatives(state,forces_moments)
-    J = np.linalg.norm(x_dot_star-x_dot[3:13])**2
+    forces_moments = mav._forces_moments(delta)
+    x_dot = mav._derivatives(mav._state,forces_moments)
+    print("xdot")
+    print(x_dot[6:10,0])
+    [phi_dot,theta_dot,psi_dot] = tools.Quaternion2Euler(x_dot[6:10,0])
+    print("psi_dot")
+    print(psi_dot)
+    print("x_dot_star[6,0]")
+    print(x_dot_star[6][0])
+    print("Quat")
+    print(x_dot[6:10])
+    x_dot_euler = np.array([[x_dot[2][0],x_dot[3][0],x_dot[4][0],x_dot[5][0],phi_dot,theta_dot,psi_dot,x_dot[10][0],x_dot[11][0],x_dot[12][0]]]).T
+    J = np.linalg.norm(x_dot_star-x_dot_euler)**2
     return J
-
