@@ -2,7 +2,6 @@
 mavsimPy
     - Chapter 4 assignment for Beard & McLain, PUP, 2012
     - Update history:  
-        12/27/2018 - RWB
         1/17/2019 - RWB
 """
 import sys
@@ -19,7 +18,7 @@ from chap4.wind_simulation import wind_simulation
 
 # initialize the visualization
 mav_view = mav_viewer()  # initialize the mav viewer
-#data_view = data_viewer()  # initialize view of data plots
+data_view = data_viewer()  # initialize view of data plots
 
 # initialize elements of the architecture
 Va0 = np.sqrt(MAV.u0**2 + MAV.v0**2 + MAV.w0**2)
@@ -45,10 +44,10 @@ while sim_time < SIM.end_time:
 
     #-------update viewer-------------
     mav_view.update(mav.msg_true_state)  # plot body of MAV
-    #data_view.update(mav.msg_true_state, # true states
-    #                 mav.msg_true_state, # estimated states
-    #                 mav.msg_true_state, # commanded states
-    #                 SIM.ts_simulation)
+    data_view.update(mav.msg_true_state, # true states
+                     mav.msg_true_state, # estimated states
+                     mav.msg_true_state, # commanded states
+                     SIM.ts_simulation)
 
     #-------increment time-------------
     sim_time += SIM.ts_simulation

@@ -45,7 +45,7 @@ def compute_trim(mav, delta, Va, gamma, R = 100000.0):
                                 ])
              })
     # solve the minimization problem to find the trim states and inputs
-    mav._state = state0
+    mav.set_state(state0)
     mav._update_velocity_data()
     forces_moments = mav._forces_moments(delta0)
     xdot = mav._derivatives(mav._state, forces_moments)
@@ -74,15 +74,7 @@ def trim_objective_fun(x, mav, Va, gamma, R = 1000000):
     delta = np.array([x[13:17]]).T
     forces_moments = mav._forces_moments(delta)
     x_dot = mav._derivatives(mav._state,forces_moments)
-    print("xdot")
-    print(x_dot[6:10,0])
     [phi_dot,theta_dot,psi_dot] = tools.Quaternion2Euler(x_dot[6:10,0])
-    print("psi_dot")
-    print(psi_dot)
-    print("x_dot_star[6,0]")
-    print(x_dot_star[6][0])
-    print("Quat")
-    print(x_dot[6:10])
     x_dot_euler = np.array([[x_dot[2][0],x_dot[3][0],x_dot[4][0],x_dot[5][0],phi_dot,theta_dot,psi_dot,x_dot[10][0],x_dot[11][0],x_dot[12][0]]]).T
     J = np.linalg.norm(x_dot_star-x_dot_euler)**2
     return J

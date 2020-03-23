@@ -36,13 +36,13 @@ Jx = 0.8244 #kg m^2
 Jy = 1.135
 Jz = 1.759
 Jxz = 0.1204
-S_wing = 0.55
-b = 2.8956
-c = 0.18994
+S_wing = 0.55 #planform area of wing
+b = 2.8956 #wingspan
+c = 0.18994 #chord length
 S_prop = 0.2027
 rho = 1.2682
 e = 0.9
-AR = (b**2) / S_wing
+AR = (b**2) / S_wing #aspect ratio
 gravity = 9.8
 
 ######################################################################################

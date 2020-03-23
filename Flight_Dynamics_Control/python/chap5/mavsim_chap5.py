@@ -15,12 +15,12 @@ from chap4.data_viewer import data_viewer
 from chap4.mav_dynamics import mav_dynamics
 from chap4.wind_simulation import wind_simulation
 from chap5.trim import compute_trim
-#from chap5.compute_models import compute_model
+from chap5.compute_models import compute_model
 from tools.signals import signals
 
 # initialize the visualization
 mav_view = mav_viewer()  # initialize the mav viewer
-#data_view = data_viewer()  # initialize view of data plots
+data_view = data_viewer()  # initialize view of data plots
 
 # initialize elements of the architecture
 wind = wind_simulation(SIM.ts_simulation)
@@ -35,7 +35,7 @@ mav.set_state(trim_state)  # set the initial state of the mav to the trim state
 delta = trim_input  # set input to constant trim input
 
 # # compute the state space model linearized about trim
-#compute_model(mav, trim_state, trim_input)
+compute_model(trim_state, trim_input)
 
 # this signal will be used to excite modes
 #input_signal = signals(amplitude=.05,
@@ -57,10 +57,10 @@ while sim_time < SIM.end_time:
 
     # -------update viewer-------------
     mav_view.update(mav.msg_true_state)  # plot body of MAV
-    #data_view.update(mav.true_state,  # true states
-    #                 mav.true_state,   # estimated states
-    #                 mav.true_state,  # commanded states
-    #                 SIM.ts_simulation)
+    data_view.update(mav.msg_true_state,  # true states
+                     mav.msg_true_state,   # estimated states
+                     mav.msg_true_state,  # commanded states
+                     SIM.ts_simulation)
 
     # -------increment time-------------
     sim_time += SIM.ts_simulation

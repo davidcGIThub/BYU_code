@@ -251,18 +251,6 @@ class mav_dynamics:
             Fay = rhoVaS * (MAV.C_Y_0 + MAV.C_Y_beta*self._beta + MAV.C_Y_p*MAV.b/(2*self._Va)*p \
                 + MAV.C_Y_r*MAV.b/(2*self._Va)*r + MAV.C_Y_delta_a*delta_a + MAV.C_Y_delta_r*delta_r)
             Faz = rhoVaS * (Cz_alpha + Czq_alpha*MAV.c/(2*self._Va)*q + Czdele_alpha*delta_e)
-        # if(self.breakpoint):
-        #     print("rhoVaS")
-        #     print(rhoVaS)
-        #     print("Cx_alpha")
-        #     print(Cx_alpha)
-        #     print("Cxq_alpha")
-        #     print(Cxq_alpha)
-        #     print("MAV.c")
-        #     print(MAV.c)
-        #     print("Cxdele_alpha")
-        #     print(Cxdele_alpha)
-        #     self.breakpoint = False
 
         #forces from props
         Vin = MAV.V_max*delta_t
@@ -277,14 +265,6 @@ class mav_dynamics:
         fx = Fgx + Fax + Tp
         fy = Fgy + Fay
         fz = Fgz + Faz
-        if(self.breakpoint):
-             print("Fgx")
-             print(Fgx)
-             print("Fax")
-             print(Fax)
-             print("Tp")
-             print(Tp)
-             self.breakpoint = False
 #1. compute trim, and initial conditions to trim values then your plane should hold that for most of the simulation. variables plotted should be flat lining
 #2. print out all of the transfer function coefficients. print all equations, for fun excite longitudinal and lateral dynamics.
         #moment from air
