@@ -40,6 +40,7 @@ class mav_dynamics:
                                [MAV.r0]])   # (12) # yaw rate in body frame
 
         #rotation from vehicle to body
+        self.h = -self._state[2,0]
         self.Rbv = np.array([[1,0,0],[0,1,0],[0,0,1]]) #rotation from vehicle to body
         # store wind data for fast recall since it is used at various points in simulation
         self._wind = np.array([[0.], [0.], [0.]])  # wind in NED frame in meters/sec (velocity of wind [uw, vw, ww])
@@ -68,12 +69,14 @@ class mav_dynamics:
         self.phi = temp1[0] # roll
         self.theta = temp2[0] # pitch
         self.psi = temp3[0] #yaw
+        self.h = -self._state[2,0]
+        #TODO update everything else
 
 
     def update_state(self, delta, wind=np.zeros((6,1))):
         '''
             Integrate the differential equations defining dynamics, update sensors
-            delta = (delta_a, delta_e, delta_r, delta_t) are the control inputs (aileron, elevator, rudder, thrust??)
+            delta = (delta_e, delta_a, delta_r, delta_t) are the control inputs (aileron, elevator, rudder, thrust??)
             wind is the wind vector in inertial coordinates
             Ts is the time step between function calls.
         '''
@@ -105,6 +108,10 @@ class mav_dynamics:
         self.phi = temp1[0]
         self.theta = temp2[0]
         self.psi = temp3[0]
+
+        #update altitude
+        self.h = -self._state[2,0]
+        
         #rotation from vehicle to body frame
 
         self.Rbv = np.array([[np.cos(self.theta)*np.cos(self.psi) ,  #rotation from vehicle frame to the body frame
@@ -125,10 +132,13 @@ class mav_dynamics:
             self.chi = self.chi
         else:
             #update heading
-            north = np.array([1,0,0])
-            Vg_ij_plane = np.array([ Vg[0][0], Vg[1][0] , 0 ])
-            self.gamma = np.arccos( np.dot(north,Vg_ij_plane[:None]) / (np.linalg.norm(Vg_ij_plane) * np.linalg.norm(north) ) )
-            self.chi = np.arccos( np.dot(Vg_ij_plane, Vg) / (np.linalg.norm(Vg_ij_plane) * np.linalg.norm(Vg) ) )
+            north = np.array([1,0])
+            heading_vector = np.array([ Vg[0][0], Vg[1][0] ])
+            gamma_vector = np.array([ Vg[0][0], -Vg[2][0] ])
+            self.chi = np.arccos( np.dot(north,heading_vector) / (np.linalg.norm(north) * np.linalg.norm(heading_vector)) ) * np.sign(heading_vector[1])
+            self.gamma = np.arccos( np.dot(north,gamma_vector) / (np.linalg.norm(north) * np.linalg.norm(gamma_vector)) ) * np.sign(gamma_vector[0])
+            print("self.chi")
+            print(self.chi)
 
         # update the airspeed, angle of attack, and side slip angles using new state
         self._update_velocity_data(wind)
@@ -214,11 +224,11 @@ class mav_dynamics:
     def _forces_moments(self, delta):
         """
         return the forces on the UAV based on the state, wind, and control surfaces
-        :param delta: np.matrix(delta_a, delta_e, delta_r, delta_t)
+        :param delta: np.matrix(delta_e, delta_a, delta_r, delta_t)
         :return: Forces and Moments on the UAV np.matrix(Fx, Fy, Fz, Ml, Mn, Mm)
         """
-        delta_a = delta[0,0]
-        delta_e = delta[1,0]
+        delta_e = delta[0,0]
+        delta_a = delta[1,0]
         delta_r = delta[2,0]
         delta_t = delta[3,0]
 

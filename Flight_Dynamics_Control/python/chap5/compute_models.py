@@ -18,7 +18,7 @@ import parameters.simulation_parameters as SIM
 
 def compute_model(trim_state, trim_input):
     # A_lon, B_lon, A_lat, B_lat = compute_ss_model(mav, trim_state, trim_input)
-    Va_trim, alpha_trim, theta_trim, a_phi1, a_phi2, a_theta1, a_theta2, a_theta3, \
+    Va_trim, alpha_trim, beta_trim, theta_trim, a_phi1, a_phi2, a_theta1, a_theta2, a_theta3, \
     a_V1, a_V2, a_V3 = compute_tf_model(trim_state, trim_input)
 
     # write transfer function gains to file
@@ -33,6 +33,7 @@ def compute_model(trim_state, trim_input):
                (trim_input.item(0), trim_input.item(1), trim_input.item(2), trim_input.item(3)))
     file.write('Va_trim = %f\n' % Va_trim)
     file.write('alpha_trim = %f\n' % alpha_trim)
+    file.write('beta_trim = %f\n' % beta_trim)
     file.write('theta_trim = %f\n' % theta_trim)
     file.write('a_phi1 = %f\n' % a_phi1)
     file.write('a_phi2 = %f\n' % a_phi2)
@@ -93,6 +94,7 @@ def compute_tf_model(trim_state, trim_input): #computes the transfer function li
     mav._update_velocity_data()
     Va_trim = mav._Va
     alpha_trim = mav._alpha
+    beta_trim = mav._beta
     phi, theta_trim, psi = Quaternion2Euler(trim_state[6:10])
     delta_t_trim = trim_input[3,0]
     _dT_dVa = dT_dVa(Va_trim, delta_t_trim)
@@ -107,7 +109,7 @@ def compute_tf_model(trim_state, trim_input): #computes the transfer function li
     a_V1 = (MAV.rho * Va_trim * MAV.S_wing / MAV.mass) * (MAV.C_D_0 + MAV.C_D_alpha * alpha_trim + MAV.C_D_delta_e) - _dT_dVa/MAV.mass
     a_V2 = _dT_ddelta_t / MAV.mass
     a_V3 = MAV.gravity * np.cos(theta_trim - alpha_trim)
-    return Va_trim, alpha_trim, theta_trim, a_phi1, a_phi2, a_theta1, a_theta2, a_theta3, a_V1, a_V2, a_V3
+    return Va_trim, alpha_trim,beta_trim, theta_trim, a_phi1, a_phi2, a_theta1, a_theta2, a_theta3, a_V1, a_V2, a_V3
 
 # def compute_ss_model(mav, trim_state, trim_input):
 #     x_euler = euler_state(trim_state)

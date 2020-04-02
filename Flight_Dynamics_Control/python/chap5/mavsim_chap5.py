@@ -38,9 +38,9 @@ delta = trim_input  # set input to constant trim input
 compute_model(trim_state, trim_input)
 
 # this signal will be used to excite modes
-#input_signal = signals(amplitude=.05,
-#                       duration=0.01,
-#                       start_time=2.0)
+input_signal = signals(amplitude=.05,
+                       duration=0.01,
+                       start_time=2.0)
 
 # initialize the simulation time
 sim_time = SIM.start_time
@@ -52,7 +52,7 @@ while sim_time < SIM.end_time:
     # -------physical system-------------
     current_wind = np.zeros((6,1))
     # this input excites the phugoid mode by adding an impulse at t=5.0
-    # delta[0][0] += input_signal.impulse(sim_time)
+    #delta[0][0] += input_signal.impulse(sim_time)
     mav.update_state(delta, current_wind)  # propagate the MAV dynamics
 
     # -------update viewer-------------
