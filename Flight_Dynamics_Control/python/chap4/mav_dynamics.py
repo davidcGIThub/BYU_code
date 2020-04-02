@@ -137,8 +137,6 @@ class mav_dynamics:
             gamma_vector = np.array([ Vg[0][0], -Vg[2][0] ])
             self.chi = np.arccos( np.dot(north,heading_vector) / (np.linalg.norm(north) * np.linalg.norm(heading_vector)) ) * np.sign(heading_vector[1])
             self.gamma = np.arccos( np.dot(north,gamma_vector) / (np.linalg.norm(north) * np.linalg.norm(gamma_vector)) ) * np.sign(gamma_vector[0])
-            print("self.chi")
-            print(self.chi)
 
         # update the airspeed, angle of attack, and side slip angles using new state
         self._update_velocity_data(wind)

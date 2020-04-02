@@ -37,8 +37,8 @@ delta_a_max = 0.78 #45 deg
 e_roll_max = 1.57 #3.14
 wn_roll = np.sqrt( np.abs(TF.a_phi2) * delta_a_max/e_roll_max) #natural frequency
 zeta_roll = .707 # damping ratio
-roll_kp = 5.625#(wn_roll**2)/TF.a_phi2 #proportional gain
-roll_kd = 0.2417#(2.0*zeta_roll*wn_roll - TF.a_phi1) / TF.a_phi2 #derivative gain
+roll_kp = (wn_roll**2)/TF.a_phi2 #proportional gain # 5.625
+roll_kd = (2.0*zeta_roll*wn_roll - TF.a_phi1) / TF.a_phi2 #derivative gain #0.2417
 tr_roll = .5*np.pi/(wn_roll *np.sqrt(1-zeta_roll**2)) #rise time
 
 #----------course loop-------------
@@ -48,38 +48,37 @@ W_course = 7.5
 tr_course = tr_roll * W_course
 zeta_course = .707
 wn_course = .5*np.pi/(tr_course * np.sqrt(1-zeta_course**2))
-course_kp = 0.7935#2*zeta_course*wn_course*Vg/MAV.gravity
-course_ki = 0.123#(wn_course**2)*Vg/MAV.gravity
+course_kp = 2*zeta_course*wn_course*Vg/MAV.gravity #0.7935
+course_ki = (wn_course**2)*Vg/MAV.gravity #0.123
 
 #----------yaw damper-------------
 wn_yaw = np.sqrt(Yv*Nr-Yr*Nv)
-yaw_damper_tau_r = 0.5 #10/wn_yaw
-yaw_damper_kp = 0.3#-(Nr*Ndelr + Ydelr*Nv)/(Ndelr**2) + np.sqrt( ((Nr*Ndelr + Ydelr*Nv)/Ndelr**2)**2  \
-    #- ( (Yv**2 + Nr**2 + 2*Yr*Nv)/(Ndelr**2) ) )
+yaw_damper_tau_r = 10/wn_yaw #0.5
+yaw_damper_kp = -(Nr*Ndelr + Ydelr*Nv)/(Ndelr**2) + np.sqrt( ((Nr*Ndelr + Ydelr*Nv)/Ndelr**2)**2  \
+    - ( (Yv**2 + Nr**2 + 2*Yr*Nv)/(Ndelr**2) ) ) #0.3
 
 #----------pitch loop-------------
 delta_e_max = 0.78
 e_pitch_max = 0.08
 wn_pitch = np.sqrt(TF.a_theta2 + np.abs(TF.a_theta3)*delta_e_max/e_pitch_max)
 zeta_pitch = 0.707
-pitch_kp = -50.84 #((wn_pitch**2) - TF.a_theta2)/TF.a_theta3
-pitch_kd = -0.828116 #(2*zeta_pitch*wn_pitch-TF.a_theta1)/TF.a_theta3
-K_theta_DC = 0.9483 #pitch_kp*TF.a_theta3/(wn_pitch**2)
+pitch_kp = ((wn_pitch**2) - TF.a_theta2)/TF.a_theta3 #50.84
+pitch_kd = (2*zeta_pitch*wn_pitch-TF.a_theta1)/TF.a_theta3 #-0.828116
+K_theta_DC = pitch_kp*TF.a_theta3/(wn_pitch**2) # 0.9483 
 
 #----------altitude loop-------------
 pitch_max = 0.52 #30 deg
-W_altitude = 10
+W_altitude = 20
 tr_altitude = tr_roll * W_course
 zeta_altitude = 0.707
-wn_altitude = .5*np.pi/(tr_altitude * np.sqrt(1-zeta_altitude**2))
-altitude_kp = 0.3247 #2*zeta_altitude*wn_altitude / (K_theta_DC*Va_trim)
-altitude_ki = 0.51034 #(wn_altitude**2) / (K_theta_DC*Va_trim)
+wn_altitude = wn_pitch/W_altitude
+altitude_kp = 2*zeta_altitude*wn_altitude / (K_theta_DC*Va_trim) #0.3247
+altitude_ki = (wn_altitude**2) / (K_theta_DC*Va_trim) #0.51034
 altitude_zone = [30,400] # moving saturation limit around current altitude
 
 #---------airspeed hold using throttle---------------
 throttle_max = 1.0
-wn_airspeed_throttle = wn_altitude #5
+wn_airspeed_throttle = 5*wn_altitude
 zeta_airspeed_throttle = 0.707
-airspeed_throttle_kp = 0.02004 #(2*zeta_airspeed_throttle*wn_airspeed_throttle - TF.a_V1) / TF.a_V2
-airspeed_throttle_ki = 5.0 #(wn_airspeed_throttle**2)/TF.a_V2
-airspeed_zone = [0,60]
+airspeed_throttle_kp = (2*zeta_airspeed_throttle*wn_airspeed_throttle - TF.a_V1) / TF.a_V2 #0.02004
+airspeed_throttle_ki = (wn_airspeed_throttle**2)/TF.a_V2 #5.0

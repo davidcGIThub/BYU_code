@@ -56,25 +56,23 @@ gamma = 0#10.0*np.pi/180.
 delta0 = np.array([[0],[0],[0],[0.5]])  #   [delta_e, delta_a, delta_r, delta_t]
 trim_state, trim_input = compute_trim(mav, delta0, Va0, gamma)
 mav.set_state(trim_state)
-
+flag = False
 # main simulation loop
 print("Press Command-Q to exit...")
 while sim_time < SIM.end_time:
 
     # -------autopilot commands-------------
-    commands.airspeed_command = Va0 #Va_command.square(sim_time)
+    commands.airspeed_command = Va_command.square(sim_time)
     commands.course_command = chi_command.square(sim_time)
-    print("course_command")
-    print(commands.course_command)
-    commands.altitude_command = -trim_state[2,0] #h_command.square(sim_time)
+    commands.altitude_command = h_command.square(sim_time)
 
     # -------controller-------------
     estimated_state = mav.msg_true_state  # uses true states in the control
+    if(np.abs(estimated_state.chi - 1.57) < .1):
+        flag = True
+    if(flag == True):
+        commands.course_command = -2.5
     delta, commanded_state = ctrl.update(commands, estimated_state)
-    #delta[0] = trim_input[0]
-    #delta[1] = trim_input[1]
-    #delta[2] = trim_input[2]
-    #delta[3] = trim_input[3]
 
     # -------physical system-------------
     current_wind = wind.update()  # get the new wind vector
