@@ -18,7 +18,7 @@ static_pres_beta = 0 #0.01*100 * np.random.uniform(-1,1)
 # -------- Pressure Sensor (Airspeed) -------- differential pressure
 diff_pres_sigma = 0.002*1000  # standard deviation of diff pressure sensor in Pascals
 diff_pres_beta = 0 #0.001*100 * np.random.uniform(-1,1)
-
+h_ground = 0
 # -------- Magnetometer --------
 mag_beta = np.radians(1.0)
 mag_sigma = np.radians(0.03)

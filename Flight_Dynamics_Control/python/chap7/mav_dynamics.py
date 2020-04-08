@@ -342,10 +342,9 @@ class mav_dynamics:
         mag_body = np.dot(R, mag_inertial)
         self._sensors.mag_x = mag_body[0,0]
         self._sensors.mag_y = mag_body[1,0]
-
         self._sensors.mag_z = mag_body[2,0]
         # simulate pressure sensors
-        self._sensors.abs_pressure = MAV.rho*MAV.gravity*self.h + SENS.static_pres_beta + np.random.normal(0,SENS.static_pres_sigma)
+        self._sensors.static_pressure = MAV.rho*MAV.gravity*(self.h - SENS.h_ground) + SENS.static_pres_beta + np.random.normal(0,SENS.static_pres_sigma)
         self._sensors.diff_pressure = MAV.rho*(self._Va**2)/2 + SENS.diff_pres_beta + np.random.normal(0,SENS.diff_pres_sigma)
         # simulate GPS sensor
         if self._t_gps >= SENS.ts_gps:

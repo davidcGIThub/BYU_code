@@ -35,8 +35,8 @@ def Euler2RotationMatrix(phi,theta,psi):
     return R
 
 def Quaternion2RotationMatrix(quat):
-    if len(quat != 4):
-        print("Error: Quaternion Size not valid")
+    if len(quat) != 4:
+        print("Error: Quaternion size not valid")
         return False
     quaternion = quat / np.linalg.norm(quat)
     r = quaternion[0]

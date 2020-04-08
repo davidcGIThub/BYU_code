@@ -60,20 +60,10 @@ class autopilot:
         # longitudinal autopilot
         # saturate the altitude command
         h_c = self.saturate(cmd.altitude_command,AP.altitude_zone[0],AP.altitude_zone[1])
-        print("h_c")
-        print(h_c)
-        print("state.h")
-        print(state.h)
         theta_c = self.altitude_from_pitch.update(h_c,state.h)
         delta_e = self.pitch_from_elevator.update(theta_c,state.theta,state.q)
         Va_command = cmd.airspeed_command
-        print("Va_command")
-        print(Va_command)
-        print("state.Va")
-        print(state.Va)
         delta_t = self.saturate(self.airspeed_from_throttle.update(Va_command,state.Va), 0 , 1)
-        print("delta_t")
-        print(delta_t)
 
         # construct output and commanded states
         delta = np.array([[delta_e], [delta_a], [delta_r], [delta_t]])
