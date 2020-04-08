@@ -39,15 +39,13 @@ wn_roll = np.sqrt( np.abs(TF.a_phi2) * delta_a_max/e_roll_max) #natural frequenc
 zeta_roll = .707 # damping ratio
 roll_kp = (wn_roll**2)/TF.a_phi2 #proportional gain # 5.625
 roll_kd = (2.0*zeta_roll*wn_roll - TF.a_phi1) / TF.a_phi2 #derivative gain #0.2417
-tr_roll = .5*np.pi/(wn_roll *np.sqrt(1-zeta_roll**2)) #rise time
 
 #----------course loop-------------
 roll_max = 0.52 #30 deg
 Vg = Va_trim #assuming zero airspeed, and average speed = Va_trim
-W_course = 7.5
-tr_course = tr_roll * W_course
+W_course = 8
 zeta_course = .707
-wn_course = .5*np.pi/(tr_course * np.sqrt(1-zeta_course**2))
+wn_course = wn_roll/W_course
 course_kp = 2*zeta_course*wn_course*Vg/MAV.gravity #0.7935
 course_ki = (wn_course**2)*Vg/MAV.gravity #0.123
 
@@ -69,7 +67,6 @@ K_theta_DC = pitch_kp*TF.a_theta3/(wn_pitch**2) # 0.9483
 #----------altitude loop-------------
 pitch_max = 0.52 #30 deg
 W_altitude = 20
-tr_altitude = tr_roll * W_course
 zeta_altitude = 0.707
 wn_altitude = wn_pitch/W_altitude
 altitude_kp = 2*zeta_altitude*wn_altitude / (K_theta_DC*Va_trim) #0.3247
