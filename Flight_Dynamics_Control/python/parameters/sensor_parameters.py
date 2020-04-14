@@ -13,7 +13,7 @@ gyro_y_bias = 0  # np.radians(5*np.random.uniform(-1, 1))  # bias on y_gyro
 gyro_z_bias = 0  # np.radians(5*np.random.uniform(-1, 1))  # bias on z_gyro
 gyro_sigma = np.radians(0.13)  # standard deviation of gyros in rad/sec
 # smaller the alpha, better trust in measurement [between 0 and 1]
-gyro_alpha = 0.5 
+gyro_alpha = 0.2
 
 # -------- Pressure Sensor(Altitude) -------- absolute pressure
 static_pres_sigma = 0.01*1000  # standard deviation of static pressure sensors in Pascals
