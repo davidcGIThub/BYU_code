@@ -359,7 +359,7 @@ class mav_dynamics:
             Vg_horizontal = np.linalg.norm(Vg_vec[0:2,0])
             self._sensors.gps_Vg = Vg_horizontal + np.random.normal(0,SENS.gps_Vg_sigma)
             gps_course_sigma = SENS.gps_Vg_sigma / Vg_horizontal
-            self._sensors.gps_course = np.arctan2(Vg_vec[1,0],Vg_vec[1,0]) + gps_course_sigma
+            self._sensors.gps_course = np.arctan2(Vg_vec[1,0],Vg_vec[0,0]) + gps_course_sigma
             self._t_gps = 0
         else:
             self._t_gps += self._ts_simulation

@@ -16,9 +16,9 @@ w0 = 0.  # initial velocity along body z-axis
 phi0 = 0.  # initial roll angle
 theta0 =  0.1  # initial pitch angle
 psi0 = 0.0  # initial yaw angle
-p0 = 0  # initial roll rate
-q0 = 0  # initial pitch rate
-r0 = 0  # initial yaw rate
+p0 = 0.0  # initial roll rate
+q0 = 0.0  # initial pitch rate
+r0 = 0.0  # initial yaw rate
 Va0 = np.sqrt(u0**2+v0**2+w0**2)
 #   Quaternion State
 e = Euler2Quaternion(phi0, theta0, psi0)
