@@ -11,7 +11,7 @@ from message_types.msg_state import msg_state
 
 ########################  Observer ######################## 
 
-class fullStateObserver:
+class fullStateDirectObserver:
     def __init__(self, ts_control):
         self.estimated_state = msg_state()
         self.estimated_state.pn = 0.      # inertial north position in meters
@@ -103,6 +103,7 @@ class directExtendedKalmanFilter:
                                  SENS.gps_n_sigma, SENS.gps_e_sigma, SENS.gps_Vg_sigma, SENS.gps_course_sigma_ave])
     
     def update(self, est_state, measurements):
+        #treat accel and gyro measurements as an input to the propagation
         u = np.array([[measurements.accel_x, measurements.accel_y, measurements.accel_z, 
                         measurements.gyro_x, measurements.gyro_y, measurements.gyro_z ]]).T
         self.propagate_model(u)
@@ -122,10 +123,47 @@ class directExtendedKalmanFilter:
         est_state.wn = self.xhat.item(12)
         est_state.we = self.xhat.item(13)
 
-    def propagate_model(self, u):
-        self.xhat = self.xhat + self.Ts*self.f(self.xhat, y)
+    def propagate_model(self, u_):
+        for i in range(0, self.N):
+             # propagate model
+            self.xhat = self.xhat + self.Ts*self.f(self.xhat, u_)
+            # compute Jacobian
+            A = jacobian(self.f,self.xhat,u_)
+            # compute G matrix for gyro noise
+            u = self.xhat.item(3)
+            v = self.xhat.item(4)
+            w = self.xhat_item(5)
+            phi = self.xhat.item(6)
+            theta = self.xhat.item(7)
+            psi = self.xhat.item(8)
+            Gg = np.array([[0 , 0 , 0],
+                            [0 , 0 , 0],
+                            [0 , 0 , 0],
+                            [0 , -w , v],
+                            [w , 0 , -u],
+                            [-v , u , 0],
+                            [1 , np.sin(phi)*np.tan(theta) , np.cos(phi)*np.tan(theta)],
+                            [0 , np.cos(phi) , -np.sin(phi)],
+                            [0 , np.sin(phi)*np.sec(theta) , np.cos(phi)*np.sec(theta)],
+                            [0 , 0 , 0],
+                            [0 , 0 , 0],
+                            [0 , 0 , 0],
+                            [0 , 0 , 0],
+                            [0 , 0 , 0]])
+            # compute G matrix for accel noise
+            Ga = np.zeros([14,3])
+            Ga[3,0] = -1
+            Ga[4,1] = -1
+            Ga[5,2] = -1
+            #Compute process covariance matrix
+            Q = np.dot(np.dot(Gg,self.Q_gyro),Gg.T) + np.dot(np.dot(Ga,self.Q_accel),Ga.T) + self.Q_tune
+            #convert to discrete time models
+            A_d = np.identity(14) + A*self.Ts + np.dot(A,A)*self.Ts**2
+            Q_d = Q*self.Ts**2
+            # update P with discrete time model
+            self.P = np.dot(np.dot(A_d,self.P),A_d.T) + Q_d
 
-    def f(self, x, y):
+    def f(self, x, u_):
     # system dynamics for propagation model: xdot = f(x, u)
         #y[0] = accel_x
         pn = x.item(0)
@@ -142,12 +180,12 @@ class directExtendedKalmanFilter:
         bz = x.item(11)
         wn = x.item(12)
         we = x.item(13)
-        accel_x = y.item(0)
-        accel_y = y.item(1)
-        accel_z = y.item(2)
-        gyro_x = y.item(3)
-        gyro_y = y.item(4)
-        gyro_z = y.item(5)
+        accel_x = u_.item(0)
+        accel_y = u_.item(1)
+        accel_z = u_.item(2)
+        gyro_x = u_.item(3)
+        gyro_y = u_.item(4)
+        gyro_z = u_.item(5)
         _f = np.array([[np.cos(theta)*np.cos(psi)*u + (np.sin(phi)*np.sin(theta)*np.cos(psi) - np.cos(phi)*np.sin(psi))*v \
                          + (np.cos(phi)*np.sin(theta)*np.cos(psi) + np.sin(phi)*np.sin(psi))*w],
                     [(np.cos(theta)*np.sin(psi))*u - (np.sin(phi)*np.sin(theta)*np.sin(psi) + np.cos(phi)*np.cos(psi))*v \
@@ -165,6 +203,41 @@ class directExtendedKalmanFilter:
                     [0],
                     [0]])
         return _f
+
+    def measurement_update(self, state, measurement):
+        # always update based on wind triangle pseudo measurement
+        # h = self.h(self.xhat, state)
+        # C = jacobian(self.h, self.xhat, state)
+        # y = np.array([measurement.gps_n, measurement.gps_e, measurement.gps_Vg, measurement.gps_course, 0, 0])
+        # for i in range(4, 6):
+        #     Ci = C[i][None,:]
+        #     Li = np.dot(self.P,Ci.T) * 1/(self.R[i,i] + np.dot(np.dot(Ci,self.P) , Ci.T))
+        #     temp = np.identity(7) - np.dot(Li,Ci)
+        #     self.P = np.dot(np.dot(temp , self.P)  ,  (temp).T) + np.dot(Li,self.R[i,i]*Li.T) 
+        #     self.xhat = self.xhat + np.dot(Li , (y[i] - h[i,0]))
+
+        # # only update GPS when one of the signals changes
+        # if (measurement.gps_n != self.gps_n_old) \
+        #     or (measurement.gps_e != self.gps_e_old) \
+        #     or (measurement.gps_Vg != self.gps_Vg_old) \
+        #     or (measurement.gps_course != self.gps_course_old):
+
+    def h(self,):
+
+    def jacobian(fun, x, u_):
+        # compute jacobian of fun with respect to x
+        f = fun(x, u_)
+        m = f.shape[0]
+        n = x.shape[0]
+        eps = 0.01  # deviation
+        J = np.zeros((m, n))
+        for i in range(0, n):
+            x_eps = np.copy(x)
+            x_eps[i][0] += eps
+            f_eps = fun(x_eps, u_)
+            df = (f_eps - f) / eps
+            J[:, i] = df[:, 0]
+        return J
 
 
 
