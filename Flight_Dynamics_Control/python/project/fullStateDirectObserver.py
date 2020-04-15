@@ -13,6 +13,7 @@ from message_types.msg_state import msg_state
 
 class fullStateDirectObserver:
     def __init__(self, ts_control):
+        #states
         self.estimated_state = msg_state()
         self.estimated_state.pn = MAV.pn0      # inertial north position in meters
         self.estimated_state.pe = MAV.pe0      # inertial east position in meters
@@ -34,7 +35,12 @@ class fullStateDirectObserver:
         self.estimated_state.bx = 0.      # gyro bias along roll axis in radians/sec
         self.estimated_state.by = 0.      # gyro bias along pitch axis in radians/sec
         self.estimated_state.bz = 0.      # gyro bias along yaw axis in radians/sec
+        #estimators
         self.directEKF = directExtendedKalmanFilter()
+        self.lpf_gyro_x = alpha_filter(alpha=SENS.gyro_alpha)
+        self.lpf_gyro_y = alpha_filter(alpha=SENS.gyro_alpha)
+        self.lpf_gyro_z = alpha_filter(alpha=SENS.gyro_alpha)
+
 
     def update(self, measurements):
         self.estimated_state.p = self.lpf_gyro_x.update(measurements.gyro_x)
@@ -60,7 +66,7 @@ class directExtendedKalmanFilter:
                                      MAV.phi0, MAV.theta0, MAV.psi0, 0, 0, 0,0,0]]).T ,
                     std_pn = SENS.gps_n_sigma**2,
                     std_pe = SENS.gps_e_sigma**2,
-                    std_pd =  ((SENS.gps_h_sigma+(MAV.rho*MAV.gravity*SENS.static_pres_sigma))/2.0)**2,
+                    std_pd =  ((SENS.gps_h_sigma+(SENS.static_pres_sigma/(MAV.rho*MAV.gravity)))/2.0)**2,
                     std_u = (SENS.gps_Vg_sigma**2)/3,
                     std_v = (SENS.gps_Vg_sigma**2)/3,
                     std_w =  (SENS.gps_Vg_sigma**2)/3,
@@ -70,19 +76,19 @@ class directExtendedKalmanFilter:
                     std_bx = np.radians(0.05)**2, 
                     std_by = np.radians(0.05)**2,
                     std_bz = np.radians(0.05)**2,
-                    std_wn = SENS.sigma_wind**2,
-                    std_we = SENS.sigma_wind**2):
+                    std_wn = SENS.wind_sigma**2,
+                    std_we = SENS.wind_sigma**2):
         self.N = 5 # number of prediction step per sample
         self.Ts = SIM.ts_control/self.N
         self.xhat = x0 #[pn, pe, pd, u ,v , w, phi, theta, psi, bx, by, bz, wn, we]
         self.P = np.identity(14)
-        self.Q_tune = np.identity() #tunable process noise
+        self.Q_tune = np.identity(14) #tunable process noise
         np.fill_diagonal(self.Q_tune,[std_pn,std_pe,std_u,std_v,std_w,std_phi,std_theta,std_psi,
                                         std_bx,std_by,std_bz,std_wn,std_we])
         self.Q_gyro = np.identity(3) 
         np.fill_diagonal(self.Q_gyro, [SENS.gyro_sigma**2, SENS.gyro_sigma**2, SENS.gyro_sigma**2])
         self.Q_accel = np.identity(3)
-        np.fill_diagonal(self.Q_accel, [SENS.gyro_accel**2, SENS.gyro_accel**2, SENS.gyro_accel**2])
+        np.fill_diagonal(self.Q_accel, [SENS.accel_sigma**2, SENS.accel_sigma**2, SENS.accel_sigma**2])
         self.R = np.identity(7) #measurement noise
         np.fill_diagonal(self.R,[SENS.static_pres_sigma**2, SENS.diff_pres_sigma**2, SENS.beta_sigma**2, 
                                  SENS.gps_n_sigma**2, SENS.gps_e_sigma**2, SENS.gps_Vg_sigma**2, SENS.gps_course_sigma_ave**2])
@@ -96,13 +102,13 @@ class directExtendedKalmanFilter:
         u = np.array([[measurements.accel_x, measurements.accel_y, measurements.accel_z, 
                         measurements.gyro_x, measurements.gyro_y, measurements.gyro_z ]]).T
         self.propagate_model(u)
-        self.measurement_update(measurements)
+        #self.measurement_update(measurements)
         est_state.pn = self.xhat.item(0)
         est_state.pe = self.xhat.item(1)
         est_state.h = -self.xhat.item(2)
         est_state.u = self.xhat.item(3)
         est_state.v = self.xhat.item(4)
-        est_state.w = self.xhat_item(5)
+        est_state.w = self.xhat.item(5)
         est_state.phi = self.xhat.item(6)
         est_state.theta = self.xhat.item(7)
         est_state.psi = self.xhat.item(8)
@@ -111,7 +117,7 @@ class directExtendedKalmanFilter:
         est_state.bz = self.xhat.item(11)
         est_state.wn = self.xhat.item(12)
         est_state.we = self.xhat.item(13)
-        #calculate remaining state estimates
+        calculate remaining state estimates
         V = np.array([[est_state.u,est_state.v,est_state.w]]).T
         W = np.array([[est_state.wn,est_state.we,0]]).T
         R = Euler2RotationMatrix(est_state.phi,est_state.theta,est_state.psi)
@@ -124,10 +130,8 @@ class directExtendedKalmanFilter:
         est_state.Va = np.linalg.norm(Va)
         est_state.alpha = np.arctan2(wr,ur)
         est_state.beta = np.arcsin(vr/(est_state.Va))
-        est_state.gamma = 
-        est_state.chi = np.arctan2(Ve,Vn)
-
-        gamma, chi, Va, Vg , alpha
+        est_state.gamma = np.arctan2(Vg.item(2),Vg.item(0))
+        est_state.chi = np.arctan2(Vg.item(1),Vg.item(0))
 
     def propagate_model(self, u_):
         for i in range(0, self.N):
@@ -138,7 +142,7 @@ class directExtendedKalmanFilter:
             # compute G matrix for gyro noise
             u = self.xhat.item(3)
             v = self.xhat.item(4)
-            w = self.xhat_item(5)
+            w = self.xhat.item(5)
             phi = self.xhat.item(6)
             theta = self.xhat.item(7)
             psi = self.xhat.item(8)
@@ -150,7 +154,7 @@ class directExtendedKalmanFilter:
                             [-v , u , 0],
                             [1 , np.sin(phi)*np.tan(theta) , np.cos(phi)*np.tan(theta)],
                             [0 , np.cos(phi) , -np.sin(phi)],
-                            [0 , np.sin(phi)*np.sec(theta) , np.cos(phi)*np.sec(theta)],
+                            [0 , np.sin(phi)/np.cos(theta) , np.cos(phi)/np.cos(theta)],
                             [0 , 0 , 0],
                             [0 , 0 , 0],
                             [0 , 0 , 0],
@@ -171,7 +175,6 @@ class directExtendedKalmanFilter:
 
     def f(self, x, u_):
     # system dynamics for propagation model: xdot = f(x, u)
-        #y[0] = accel_x
         pn = x.item(0)
         pe = x.item(1)
         pd = x.item(2)
@@ -194,15 +197,15 @@ class directExtendedKalmanFilter:
         gyro_z = u_.item(5)
         _f = np.array([[np.cos(theta)*np.cos(psi)*u + (np.sin(phi)*np.sin(theta)*np.cos(psi) - np.cos(phi)*np.sin(psi))*v \
                          + (np.cos(phi)*np.sin(theta)*np.cos(psi) + np.sin(phi)*np.sin(psi))*w],
-                    [(np.cos(theta)*np.sin(psi))*u - (np.sin(phi)*np.sin(theta)*np.sin(psi) + np.cos(phi)*np.cos(psi))*v \
+                    [(np.cos(theta)*np.sin(psi))*u + (np.sin(phi)*np.sin(theta)*np.sin(psi) + np.cos(phi)*np.cos(psi))*v \
                         + (np.cos(phi)*np.sin(theta)*np.sin(psi) - np.sin(phi)*np.cos(psi))*w ],
-                    [-u*np.sin(theta) - v*np.sin(phi)*np.cos(theta) - w*np.cos(phi)*np.cos(theta)],
-                    [-w*(gyro_y - by) + v*(gyro_z -bz) + accel_x - MAV.g*np.sin(theta)],
-                    [w*(gyro_x - bx) - u*(gyro_z - bz) + accel_y - MAV.g*np.cos(theta)*np.sin(phi)],
-                    [-v*(gyro_x - bx) + u*(gyro_y -by) + accel_z - MAV.g*np.cos(theta)*np.cos(phi)],
+                    [-u*np.sin(theta) + v*np.sin(phi)*np.cos(theta) + w*np.cos(phi)*np.cos(theta)],
+                    [accel_x - MAV.gravity*np.sin(theta) + v*(gyro_z -bz) - w*(gyro_y - by)],
+                    [accel_y + MAV.gravity*np.cos(theta)*np.sin(phi) + w*(gyro_x - bx) - u*(gyro_z - bz)],
+                    [accel_z + MAV.gravity*np.cos(theta)*np.cos(phi) + u*(gyro_y -by) - v*(gyro_x - bx)],
                     [(gyro_x-bx) + np.sin(phi)*np.tan(theta)*(gyro_y-by) + np.cos(phi)*np.tan(theta)*(gyro_z-bz)],
                     [np.cos(phi)*(gyro_y-by) - np.sin(phi)*(gyro_z-bz)],
-                    [np.sin(phi)*np.sec(theta)*(gyro_y-by) + np.cos(phi)*np.sec(theta)*(gyro_z-bz)],
+                    [np.sin(phi)*(gyro_y-by)/np.cos(theta) + np.cos(phi)*(gyro_z-bz)/np.cos(theta)],
                     [0],
                     [0],
                     [0],
@@ -210,17 +213,18 @@ class directExtendedKalmanFilter:
                     [0]])
         return _f
 
-    def measurement_update(self, state, measurement):
+    def measurement_update(self, measurement):
         # always update pressure measurements, and fake sideslip
-        h = self.h(self.xhat, state)
-        C = self.jacobian(self.h, self.xhat)
+        u_ = np.array([])
+        h = self.h(self.xhat,u_)
+        C = self.jacobian(self.h, self.xhat, u_)
         psuedo_vr = 0 #drive vr to zero so that beta = 0
         y = np.array([[measurement.static_pressure, measurement.diff_pressure, psuedo_vr,
-                    measurement.gps_n, measurement.gps_e, measurement.gps_Vg, measurement.gps_chi]]).T
+                    measurement.gps_n, measurement.gps_e, measurement.gps_Vg, measurement.gps_course]]).T
         for i in range(0, 3):
             Ci = C[i][None,:]
             Li = np.dot(self.P,Ci.T) * 1/(self.R[i,i] + np.dot(np.dot(Ci,self.P) , Ci.T))
-            temp = np.identity(7) - np.dot(Li,Ci)
+            temp = np.identity(14) - np.dot(Li,Ci)
             self.P = np.dot(np.dot(temp , self.P)  ,  (temp).T) + np.dot(Li,self.R[i,i]*Li.T) 
             self.xhat = self.xhat + np.dot(Li , (y.item(i) - h.item(i)))
 
@@ -234,6 +238,8 @@ class directExtendedKalmanFilter:
                 Li = np.dot(self.P,Ci.T) * 1/(self.R[i,i] + np.dot(np.dot(Ci,self.P) , Ci.T))
                 temp = np.identity(14) - np.dot(Li,Ci)
                 self.P = np.dot(np.dot(temp , self.P)  ,  temp.T) + np.dot(Li,self.R[i,i]*Li.T) 
+                if i == 6:
+                    y[i] = wrap(y[i], h[i,0])
                 self.xhat = self.xhat + np.dot(Li , (y.item(i) - h.item(i)))
             # update stored GPS signals
             self.gps_n_old = measurement.gps_n
@@ -241,7 +247,7 @@ class directExtendedKalmanFilter:
             self.gps_Vg_old = measurement.gps_Vg
             self.gps_course_old = measurement.gps_course
 
-    def h(self,x):
+    def h(self,x, u_):
         pn = x.item(0)
         pe = x.item(1)
         pd = -x.item(2)

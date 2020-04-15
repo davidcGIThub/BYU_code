@@ -13,7 +13,7 @@ from chap4.wind_simulation import wind_simulation
 from chap6.autopilot import autopilot
 from chap7.mav_dynamics import mav_dynamics
 from chap8.observer import observer
-from project.fullStateObserver import fsObserver
+from project.fullStateDirectObserver import fullStateDirectObserver as fsdObserver 
 from tools.signals import signals
 
 # initialize the visualization
@@ -24,7 +24,9 @@ data_view = data_viewer()  # initialize view of data plots
 wind = wind_simulation(SIM.ts_simulation)
 mav = mav_dynamics(SIM.ts_simulation)
 ctrl = autopilot(SIM.ts_simulation)
-obsv = observer(SIM.ts_simulation)
+#obsv = observer(SIM.ts_simulation)
+obsv = fsdObserver(SIM.ts_simulation)
+
 
 # autopilot commands
 from message_types.msg_autopilot import msg_autopilot
@@ -57,7 +59,7 @@ while sim_time < SIM.end_time:
     # -------controller-------------
     measurements = mav.sensors()  # get sensor measurements
     estimated_state = obsv.update(measurements)  # estimate states from measurements
-    delta, commanded_state = ctrl.update(commands, estimated_state)
+    delta, commanded_state = ctrl.update(commands, mav.msg_true_state)#estimated_state)
 
     # -------physical system-------------
     current_wind = wind.update()  # get the new wind vector
