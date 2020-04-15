@@ -15,4 +15,4 @@ ts_video = 0.1  # write rate for video
 
 ts_control = ts_simulation  # sample rate for the controller
 
-
+sigma_wind = 1.5 #m/s
