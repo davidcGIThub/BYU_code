@@ -27,6 +27,24 @@ e1 = e.item(1)
 e2 = e.item(2)
 e3 = e.item(3)
 
+#   Initial conditions noise for MAV
+p_sigma = 0#10
+pn0_n = pn0 + np.random.normal(0,p_sigma)  # initial north position
+pe0_n = pe0 + np.random.normal(0,p_sigma)  # initial east position
+pd0_n = pd0 + np.random.normal(0,p_sigma) # initial down position
+vel_sigma = 0#1
+u0_n = u0 + np.random.normal(0,vel_sigma)  # initial velocity along body x-axis
+v0_n = v0 + np.random.normal(0,vel_sigma)  # initial velocity along body y-axis
+w0_n = w0 + np.random.normal(0,vel_sigma)  # initial velocity along body z-axis
+angle_sigma = 0#np.radians(0.05)
+phi0_n = phi0 + np.random.normal(0,angle_sigma)  # initial roll angle
+theta0_n =  theta0 + np.random.normal(0,angle_sigma)  # initial pitch angle
+psi0_n = psi0 + np.random.normal(0,angle_sigma)  # initial yaw angle
+angle_rate_sigma = 0#np.radians(0.01)
+p0_n = 0.0 + np.random.normal(0,angle_rate_sigma)  # initial roll rate
+q0_n = 0.0 + np.random.normal(0,angle_rate_sigma) # initial pitch rate
+r0_n = 0.0 + np.random.normal(0,angle_rate_sigma)# initial yaw rate
+Va0_n = np.sqrt(u0**2+v0**2+w0**2) + np.random.normal(0,vel_sigma)
 
 ######################################################################################
                 #   Physical Parameters

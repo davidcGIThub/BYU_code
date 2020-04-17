@@ -5,9 +5,10 @@ import parameters.control_parameters as CTRL
 import parameters.simulation_parameters as SIM
 import parameters.sensor_parameters as SENS
 from tools.tools import Euler2RotationMatrix
-from tools.wrap import wrap
+from tools.wrap import wrap, wrapAngle
 import parameters.aerosonde_parameters as MAV
 from message_types.msg_state import msg_state
+import pdb
 
 ########################  Observer ######################## 
 
@@ -15,13 +16,13 @@ class fullStateDirectObserver:
     def __init__(self, ts_control):
         #states
         self.estimated_state = msg_state()
-        self.estimated_state.pn = MAV.pn0      # inertial north position in meters
-        self.estimated_state.pe = MAV.pe0      # inertial east position in meters
-        self.estimated_state.h = -MAV.pd0       # inertial altitude in meters
-        self.estimated_state.phi = MAV.phi0    # roll angle in radians
-        self.estimated_state.theta = MAV.theta0   # pitch angle in radians
-        self.estimated_state.psi = MAV.psi0     # yaw angle in radians
-        self.estimated_state.Va = MAV.Va0      # airspeed in meters/sec
+        self.estimated_state.pn = MAV.pn0_n      # inertial north position in meters
+        self.estimated_state.pe = MAV.pe0_n      # inertial east position in meters
+        self.estimated_state.h = -MAV.pd0_n       # inertial altitude in meters
+        self.estimated_state.phi = MAV.phi0_n    # roll angle in radians
+        self.estimated_state.theta = MAV.theta0_n   # pitch angle in radians
+        self.estimated_state.psi = MAV.psi0_n     # yaw angle in radians
+        self.estimated_state.Va = MAV.Va0_n      # airspeed in meters/sec
         self.estimated_state.alpha = 0.   # angle of attack in radians
         self.estimated_state.beta = 0.    # sideslip angle in radians
         self.estimated_state.p = 0.       # roll rate in radians/sec
@@ -62,8 +63,8 @@ class alpha_filter:
         return self.y
 
 class directExtendedKalmanFilter:
-    def __init__(self, x0 = np.array([[MAV.pn0, MAV.pe0, MAV.pd0, MAV.u0, MAV.v0, MAV.w0,
-                                     MAV.phi0, MAV.theta0, MAV.psi0, 0, 0, 0,0,0]]).T ,
+    def __init__(self, x0 = np.array([[MAV.pn0_n, MAV.pe0_n, MAV.pd0_n, MAV.u0_n, MAV.v0_n, MAV.w0_n,
+                                     MAV.phi0_n, MAV.theta0_n, MAV.psi0_n, 0, 0, 0,0,0]]).T ,
                     std_pn = SENS.gps_n_sigma**2,
                     std_pe = SENS.gps_e_sigma**2,
                     std_pd =  ((SENS.gps_h_sigma+(SENS.static_pres_sigma/(MAV.rho*MAV.gravity)))/2.0)**2,
@@ -81,7 +82,8 @@ class directExtendedKalmanFilter:
         self.N = 5 # number of prediction step per sample
         self.Ts = SIM.ts_control/self.N
         self.xhat = x0 #[pn, pe, pd, u ,v , w, phi, theta, psi, bx, by, bz, wn, we]
-        self.P = np.identity(14)
+        self.P = np.identity(14)*0
+
         self.Q_tune = np.identity(14) #tunable process noise
         np.fill_diagonal(self.Q_tune,[std_pn,std_pe,std_u,std_v,std_w,std_phi,std_theta,std_psi,
                                         std_bx,std_by,std_bz,std_wn,std_we])
@@ -102,7 +104,11 @@ class directExtendedKalmanFilter:
         u = np.array([[measurements.accel_x, measurements.accel_y, measurements.accel_z, 
                         measurements.gyro_x, measurements.gyro_y, measurements.gyro_z ]]).T
         self.propagate_model(u)
-        #self.measurement_update(measurements)
+        print("xhat - after propagation")
+        print(self.xhat)
+        self.measurement_update(measurements)
+        print("xhat - after measurement")
+        print(self.xhat)
         est_state.pn = self.xhat.item(0)
         est_state.pe = self.xhat.item(1)
         est_state.h = -self.xhat.item(2)
@@ -117,7 +123,7 @@ class directExtendedKalmanFilter:
         est_state.bz = self.xhat.item(11)
         est_state.wn = self.xhat.item(12)
         est_state.we = self.xhat.item(13)
-        calculate remaining state estimates
+        # calculate remaining state estimates
         V = np.array([[est_state.u,est_state.v,est_state.w]]).T
         W = np.array([[est_state.wn,est_state.we,0]]).T
         R = Euler2RotationMatrix(est_state.phi,est_state.theta,est_state.psi)
@@ -129,7 +135,10 @@ class directExtendedKalmanFilter:
         est_state.Vg = np.sqrt(Vg.item(0)**2 + Vg.item(1)**2)
         est_state.Va = np.linalg.norm(Va)
         est_state.alpha = np.arctan2(wr,ur)
-        est_state.beta = np.arcsin(vr/(est_state.Va))
+        if est_state.Va == 0:
+            est_state.beta = 0
+        else:
+            est_state.beta = np.arcsin(vr/(est_state.Va))
         est_state.gamma = np.arctan2(Vg.item(2),Vg.item(0))
         est_state.chi = np.arctan2(Vg.item(1),Vg.item(0))
 
@@ -137,6 +146,13 @@ class directExtendedKalmanFilter:
         for i in range(0, self.N):
              # propagate model
             self.xhat = self.xhat + self.Ts*self.f(self.xhat, u_)
+            #wrap angless
+            self.xhat[6] = wrapAngle(self.xhat[6])
+            self.xhat[7] = wrapAngle(self.xhat[7])
+            self.xhat[8] = wrapAngle(self.xhat[8])
+            #prevent division by zero error
+            if np.abs(np.cos(self.xhat[7])) < 0.0001:
+                self.xhat[7] = 1.57 * np.sign(self.xhat[7])
             # compute Jacobian
             A = self.jacobian(self.f,self.xhat,u_)
             # compute G matrix for gyro noise
@@ -218,39 +234,50 @@ class directExtendedKalmanFilter:
         u_ = np.array([])
         h = self.h(self.xhat,u_)
         C = self.jacobian(self.h, self.xhat, u_)
+        print("Numerical")
+        print(C)
+        print("Analytic")
+        print(self.h_jacobian(self.xhat))
         psuedo_vr = 0 #drive vr to zero so that beta = 0
         y = np.array([[measurement.static_pressure, measurement.diff_pressure, psuedo_vr,
                     measurement.gps_n, measurement.gps_e, measurement.gps_Vg, measurement.gps_course]]).T
-        for i in range(0, 3):
+        for i in range(0, 2):
             Ci = C[i][None,:]
             Li = np.dot(self.P,Ci.T) * 1/(self.R[i,i] + np.dot(np.dot(Ci,self.P) , Ci.T))
             temp = np.identity(14) - np.dot(Li,Ci)
             self.P = np.dot(np.dot(temp , self.P)  ,  (temp).T) + np.dot(Li,self.R[i,i]*Li.T) 
             self.xhat = self.xhat + np.dot(Li , (y.item(i) - h.item(i)))
+            #wrap angles
+            self.xhat[6] = wrapAngle(self.xhat[6])
+            self.xhat[7] = wrapAngle(self.xhat[7])
+            self.xhat[8] = wrapAngle(self.xhat[8])
+            #prevent division by zero error
+            if np.abs(np.cos(self.xhat[7])) < 0.0001:
+                self.xhat[7] = 1.57 * np.sign(self.xhat[7])
 
-        # only update GPS when one of the signals changes
-        if (measurement.gps_n != self.gps_n_old) \
-             or (measurement.gps_e != self.gps_e_old) \
-             or (measurement.gps_Vg != self.gps_Vg_old) \
-             or (measurement.gps_course != self.gps_course_old):
-            for i in range(3, 7):
-                Ci = C[i][None,:]
-                Li = np.dot(self.P,Ci.T) * 1/(self.R[i,i] + np.dot(np.dot(Ci,self.P) , Ci.T))
-                temp = np.identity(14) - np.dot(Li,Ci)
-                self.P = np.dot(np.dot(temp , self.P)  ,  temp.T) + np.dot(Li,self.R[i,i]*Li.T) 
-                if i == 6:
-                    y[i] = wrap(y[i], h[i,0])
-                self.xhat = self.xhat + np.dot(Li , (y.item(i) - h.item(i)))
-            # update stored GPS signals
-            self.gps_n_old = measurement.gps_n
-            self.gps_e_old = measurement.gps_e
-            self.gps_Vg_old = measurement.gps_Vg
-            self.gps_course_old = measurement.gps_course
+        # # only update GPS when one of the signals changes
+        # if (measurement.gps_n != self.gps_n_old) \
+        #      or (measurement.gps_e != self.gps_e_old) \
+        #      or (measurement.gps_Vg != self.gps_Vg_old) \
+        #      or (measurement.gps_course != self.gps_course_old):
+        #     for i in range(3, 7):
+        #         Ci = C[i][None,:]
+        #         Li = np.dot(self.P,Ci.T) * 1/(self.R[i,i] + np.dot(np.dot(Ci,self.P) , Ci.T))
+        #         temp = np.identity(14) - np.dot(Li,Ci)
+        #         self.P = np.dot(np.dot(temp , self.P)  ,  temp.T) + np.dot(Li,self.R[i,i]*Li.T) 
+        #         if i == 6:
+        #             y[i] = wrap(y[i], h[i,0])
+        #         self.xhat = self.xhat + np.dot(Li , (y.item(i) - h.item(i)))
+        #     # update stored GPS signals
+        #     self.gps_n_old = measurement.gps_n
+        #     self.gps_e_old = measurement.gps_e
+        #     self.gps_Vg_old = measurement.gps_Vg
+        #     self.gps_course_old = measurement.gps_course
 
     def h(self,x, u_):
         pn = x.item(0)
         pe = x.item(1)
-        pd = -x.item(2)
+        pd = x.item(2)
         u = x.item(3)
         v = x.item(4)
         w = x.item(5)
@@ -268,7 +295,7 @@ class directExtendedKalmanFilter:
         Va = V-np.dot(R.T,W)
         vr = Va.item(1)
         h_ = np.array([[-MAV.rho*MAV.gravity*pd],   #h_static
-                    [.5*MAV.rho*np.dot(Va.T,Va)],   #h_diff
+                    [.5*MAV.rho*np.dot(Va.T,Va).item(0)],   #h_diff
                     [vr],                           #h_beta - driving side dir Va zero
                     [pn],                           #h_gps_n 
                     [pe],                           #h_gps_e
@@ -276,13 +303,97 @@ class directExtendedKalmanFilter:
                     [np.arctan2(Ve,Vn)]])           #h_chi
         return h_
 
+    def h_jacobian(self, x):
+        #Create variables used for calculations
+        pn = x.item(0)
+        pe = x.item(1)
+        pd = x.item(2)
+        u = x.item(3)
+        v = x.item(4)
+        w = x.item(5)
+        phi = x.item(6)
+        theta = x.item(7)
+        psi = x.item(8)
+        wn = x.item(12)
+        we = x.item(13)
+        V = np.array([[u,v,w]]).T
+        W = np.array([[wn,we,0]]).T
+        R = Euler2RotationMatrix(phi,theta,psi)
+        Vg = np.dot(R,V)
+        Vn = Vg.item(0) #north velocity
+        Ve = Vg.item(1) #east velocity
+        Vg_horiz = np.array([[Vn,Ve, 0]]).T
+        Va = V-np.dot(R.T,W)
+        c_phi = np.cos(phi)
+        c_theta = np.cos(theta)
+        c_psi = np.cos(psi)
+        s_phi = np.sin(phi)
+        s_theta = np.sin(theta)
+        s_psi = np.sin(psi)
+        P_mat = np.array([[1,0,0],[0,1,0]])
+        #Calculate Jacobian
+        #Cstatic
+        C_static = np.array([ 0 , 0 , -MAV.rho*MAV.gravity , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ])
+        #Cdiff Calculations
+        dRW_dAtt = np.array([[0 , -wn*s_theta*c_psi-we*s_theta*s_psi , -wn*c_theta*s_psi+we*c_theta*c_psi],
+                                [wn*(c_phi*s_theta*c_psi+s_phi*s_psi) + we*(c_phi*s_theta*s_psi-s_phi*c_psi) , wn*s_phi*c_theta*c_psi + we*s_phi*c_theta*s_psi ,
+                                            wn*(-s_phi*s_theta*s_psi-c_phi*c_psi) + we*(s_phi*s_theta*c_psi-c_phi*s_psi)],
+                                [wn*(-s_phi*s_theta*c_psi+c_phi*s_psi) + we*(-s_phi*s_theta*s_psi-c_phi*c_psi) , wn*c_phi*c_theta*c_psi + we*c_phi*c_theta*s_psi , 
+                                            wn*(-c_phi*s_theta*s_psi+s_phi*c_psi) + we*(c_phi*s_theta*c_psi+s_phi*s_psi)]])
+        diff_Att = np.dot(-dRW_dAtt.T,Va)
+        diff_Wind = -np.dot(P_mat , np.dot(R,Va))
+        C_diff = MAV.rho*np.array([ 0 , 0 , 0 , Va.item(0), Va.item(1), Va.item(2), diff_Att.item(0), diff_Att.item(1), diff_Att.item(2), 0 , 0 , 0 , diff_Wind.item(0), diff_Wind.item(1)])
+        #C_beta - sideslip pseudo
+        dvr_dphi = -wn*(c_phi*s_theta*c_psi+s_phi*s_psi) - we*(c_phi*s_theta*s_psi-s_phi*c_psi)
+        dvr_dtheta = -wn*s_phi*c_theta*c_psi - we*s_phi*c_theta*s_psi
+        dvr_dpsi =  -wn*(-s_phi*s_theta*s_psi-c_phi*c_psi) - we*(s_phi*s_theta*c_psi-c_phi*s_psi)
+        dvr_dwn = -(c_phi*s_theta*c_psi + s_phi*s_psi)
+        dvr_dwe = (c_phi*s_theta*s_psi-s_phi*c_psi)
+        C_beta = np.array([0 , 0 , 0 , 0 , 1 , 0 , dvr_dphi , dvr_dtheta , dvr_dpsi , 0 , 0 , 0 , dvr_dwn , dvr_dwe])
+        #C_gps_n
+        C_gps_n = np.array([ 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0])
+        #C_gps_e
+        C_gps_e = np.array([ 0 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0])
+        #C_gps_Vg calculations
+        gps_Vg_Vel = np.dot( R.T, np.dot(P_mat.T , np.dot(P_mat , np.dot(R,V)))) / np.linalg.norm(Vg_horiz)
+        temp_numerator = 2*np.linalg.norm(Vg_horiz)
+        dVn_dphi = v*(c_phi*s_theta*c_psi+s_phi*s_psi) + w*(-s_phi*s_theta*c_psi+c_phi*s_psi)
+        dVn_dtheta = u*(-s_theta*c_psi) + v*(s_phi*c_theta*c_psi) + w*(c_phi*c_theta*s_psi)
+        dVn_dpsi = u*(-c_theta*s_psi) + v*(-s_phi*s_theta*s_psi-c_phi*c_psi) + w*(-c_phi*s_theta*s_psi+s_phi*c_psi)
+        dVe_dphi = v*(c_phi*s_theta*s_psi-s_theta*c_psi) + w*(-s_phi*s_theta*s_psi-c_phi*c_psi)
+        dVe_dtheta = u*(-s_theta*s_psi) + v*(s_phi*c_theta*s_psi) + w*(c_phi*c_theta*s_psi)
+        dVe_dpsi =  u*(c_theta*c_psi) + v*(s_phi*s_theta*c_psi-c_phi*s_psi) + w*(c_phi*s_theta*c_psi+s_phi*s_psi)
+        dVgmag_dphi = (Vn*dVn_dphi + Ve*dVe_dphi)/(np.linalg.norm(Vg_horiz))
+        dVgmag_dtheta = (Vn*dVn_dtheta + Ve*dVe_dtheta)/(np.linalg.norm(Vg_horiz))
+        dVgmag_dpsi = (Vn*dVn_dpsi + Ve*dVe_dpsi)/(np.linalg.norm(Vg_horiz))
+        C_gps_Vg = np.array([0 , 0 , 0 , gps_Vg_Vel.item(0), gps_Vg_Vel.item(1) , gps_Vg_Vel.item(2) , dVgmag_dphi , dVgmag_dtheta , dVgmag_dpsi , 0 , 0 , 0 , 0 , 0])
+        #Calculations for C_gps_chi
+        (Vn**2 + Ve**2)
+        dVn_du = R[0,0]
+        dVn_dv = R[0,1]
+        dVn_dw = R[0,2]
+        dVe_du = R[1,0]
+        dVe_dv = R[1,1]
+        dVe_dw = R[1,2]
+        dchi_du = (Vn*dVe_du - Ve*dVn_du)/(Vn**2 + Ve**2)
+        dchi_dv = (Vn*dVe_dv - Ve*dVn_dv)/(Vn**2 + Ve**2)
+        dchi_dw = (Vn*dVe_dw - Ve*dVn_dw)/(Vn**2 + Ve**2)
+        dchi_dphi = (Vn*dVe_dphi - Ve*dVn_dphi)/(Vn**2 + Ve**2)
+        dchi_dtheta = (Vn*dVe_dtheta - Ve*dVn_dtheta)/(Vn**2 + Ve**2)
+        dchi_dpsi = (Vn*dVe_dpsi - Ve*dVn_dpsi)/(Vn**2 + Ve**2)
+        C_gps_chi = np.array([0 , 0 , 0 , dchi_du , dchi_dv , dchi_dw , dchi_dphi , dchi_dtheta , dchi_dpsi, 0 , 0 , 0 , 0 ,0])
+        C = np.array([C_static , C_diff , C_beta , C_gps_n , C_gps_e , C_gps_Vg , C_gps_chi])
+        dVg_du = (Vn*dVn_du + Ve*dVe_du)/np.linalg.norm(Vg_horiz)
+        return C
+
     def jacobian(self, fun, x, u_):
         # compute jacobian of fun with respect to x
         f = fun(x, u_)
         m = f.shape[0]
         n = x.shape[0]
-        eps = 0.01  # deviation
+        eps = 0.0001  # deviation
         J = np.zeros((m, n))
+        #looping through each x estimate to take derivative of H with respect to x
         for i in range(0, n):
             x_eps = np.copy(x)
             x_eps[i][0] += eps
@@ -293,3 +404,12 @@ class directExtendedKalmanFilter:
 
 
 
+# dVn_dphi = v*(c_phi*s_theta*c_psi+s_phi*s_psi) + w*(-s_phi*s_theta*c_psi+c_phi*s_psi)
+# dVn_dtheta = u*(-s_theta*c_psi) + v*(s_phi*c_theta*c_psi) + w*(c_phi*c_theta*s_psi)
+# dVn_dpsi = u*(-c_theta*s_psi) + v*(-s_phi*s_theta*s_psi-c_phi*c_psi) + w*(-c_phi*s_theta*s_psi+s_phi*c_psi)
+# dVe_dphi = v*(c_phi*s_theta*s_psi-s_theta*c_psi) + w*(-s_phi*s_theta*s_psi-c_phi*c_psi)
+# dVe_dtheta = u*(-s_theta*s_psi) + v*(s_phi*c_theta*s_psi) + w*(c_phi*c_theta*s_psi)
+# dVe_dpsi =  u*(c_theta*c_psi) + v*(s_phi*s_theta*c_psi-c_phi*s_psi) + w*(c_phi*s_theta*c_psi+s_phi*s_psi)
+# dVd_dphi = v*(c_phi*c_theta) + w*(-s_phi*c_theta)
+# dVd_dtheta = u*(-c_theta) + v*(-s_phi*s_theta) + w*(-c_phi*s_theta)
+# dVd_dpsi = 0

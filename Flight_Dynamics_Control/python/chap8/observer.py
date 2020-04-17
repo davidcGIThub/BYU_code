@@ -23,14 +23,26 @@ class observer:
     def __init__(self, ts_control):
         # initialized estimated state message
         self.estimated_state = msg_state()
-        self.estimated_state.p = 0
-        self.estimated_state.q = 0
-        self.estimated_state.r = 0
-        self.estimated_state.u = 0
-        self.estimated_state.v = 0
-        self.estimated_state.w = 0
-        self.estimated_state.Va = MAV.Va0
-        self.estimated_state.h = -MAV.pd0
+        self.estimated_state.pn = MAV.pn0      # inertial north position in meters
+        self.estimated_state.pe = MAV.pe0      # inertial east position in meters
+        self.estimated_state.h = -MAV.pd0       # inertial altitude in meters
+        self.estimated_state.phi = MAV.phi0    # roll angle in radians
+        self.estimated_state.theta = MAV.theta0   # pitch angle in radians
+        self.estimated_state.psi = MAV.psi0     # yaw angle in radians
+        self.estimated_state.Va = MAV.Va0      # airspeed in meters/sec
+        self.estimated_state.alpha = 0.   # angle of attack in radians
+        self.estimated_state.beta = 0.    # sideslip angle in radians
+        self.estimated_state.p = 0.       # roll rate in radians/sec
+        self.estimated_state.q = 0.       # pitch rate in radians/sec
+        self.estimated_state.r = 0.       # yaw rate in radians/sec
+        self.estimated_state.Vg = 0.      # groundspeed in meters/sec
+        self.estimated_state.gamma = 0.   # flight path angle in radians
+        self.estimated_state.chi = 0.     # course angle in radians
+        self.estimated_state.wn = 0.      # inertial windspeed in north direction in meters/sec
+        self.estimated_state.we = 0.      # inertial windspeed in east direction in meters/sec
+        self.estimated_state.bx = 0.      # gyro bias along roll axis in radians/sec
+        self.estimated_state.by = 0.      # gyro bias along pitch axis in radians/sec
+        self.estimated_state.bz = 0.      # gyro bias along yaw axis in radians/sec
         # use alpha filters to low pass filter gyros and accels
         self.lpf_gyro_x = alpha_filter(alpha=SENS.gyro_alpha)
         self.lpf_gyro_y = alpha_filter(alpha=SENS.gyro_alpha)
