@@ -13,7 +13,7 @@ from scipy.stats import chi2
 
 ########################  Observer ######################## 
 
-class fullStateDirectObserver:
+class fullStateIndirectObserver:
     def __init__(self, ts_control):
         #states
         self.estimated_state = msg_state()
@@ -41,7 +41,7 @@ class fullStateDirectObserver:
         self.estimated_state.bz = 0.      # gyro bias along yaw axis in radians/sec
 
         # estimators
-        self.directEKF = directExtendedKalmanFilter()
+        self.directEKF = indirectExtendedKalmanFilter()
         self.lpf_gyro_x = alpha_filter(alpha=SENS.gyro_alpha)
         self.lpf_gyro_y = alpha_filter(alpha=SENS.gyro_alpha)
         self.lpf_gyro_z = alpha_filter(alpha=SENS.gyro_alpha)
@@ -68,8 +68,8 @@ class alpha_filter:
         self.y = self.alpha * self.y + (1 - self.alpha) * u
         return self.y
 
-class directExtendedKalmanFilter:
-    def __init__(self, N = 10, x0 = np.array([[MAV.pn0_n, MAV.pe0_n, MAV.pd0_n, MAV.u0_n, MAV.v0_n, MAV.w0_n,
+class indirectExtendedKalmanFilter:
+    def __init__(self, N = 10, x0_err = np.zeros((1,14)).T, x0 = np.array([[MAV.pn0_n, MAV.pe0_n, MAV.pd0_n, MAV.u0_n, MAV.v0_n, MAV.w0_n,
                                      MAV.phi0_n, MAV.theta0_n, MAV.psi0_n, 0, 0, 0,0,0]]).T ,
                     std_pn = (SENS.gps_n_sigma)**2,
                     std_pe = (2*SENS.gps_e_sigma)**2,
@@ -88,6 +88,7 @@ class directExtendedKalmanFilter:
         self.N = N # number of prediction step per sample
         self.Ts = SIM.ts_control/self.N
         self.xhat = x0 #[pn, pe, pd, u ,v , w, phi, theta, psi, bx, by, bz, wn, we]
+        self.xhat_err = x0_err
         self.P = np.identity(14)
         self.Q_tune = np.identity(14) #tunable process noise
         Q_tune_diag = [std_pn,std_pe,std_u,std_v,std_w,std_phi,std_theta,std_psi,std_bx,std_by,std_bz,std_wn,std_we]*0
@@ -99,7 +100,7 @@ class directExtendedKalmanFilter:
         self.R = np.identity(7) #measurement noise
         np.fill_diagonal(self.R,[(10*SENS.static_pres_sigma)**2, (15*SENS.diff_pres_sigma)**2, (15*SENS.psuedo_ur_sigma)**2, 
                                  (2*SENS.gps_n_sigma)**2, (2*SENS.gps_e_sigma)**2, (2*SENS.gps_Vg_sigma)**2, (20*SENS.gps_course_sigma_ave)**2])
-        self.outlier_prob = np.array([0.5,0.01,0.01,0.5,0.5,0.01,0.01])
+        self.outlier_prob = np.array([0.3,0.01,0.01,0.3,0.3,0.01,0.01])
         self.gps_n_old = 9999
         self.gps_e_old = 9999
         self.gps_Vg_old = 9999
@@ -158,6 +159,8 @@ class directExtendedKalmanFilter:
             # compute Jacobian
             #A = self.jacobian(self.f,self.xhat,u_)
             A = self.f_jacobian(self.xhat, u_)
+            #propogate error
+            self.xhat_err = self.xhat_err + np.dot(A,self.xhat_err)
             # compute G matrix for gyro noise
             u = self.xhat.item(3)
             v = self.xhat.item(4)
@@ -212,7 +215,8 @@ class directExtendedKalmanFilter:
                 Li = np.dot(self.P,Ci.T) * 1/(self.R[i,i] + np.dot(np.dot(Ci,self.P) , Ci.T))
                 temp = np.identity(14) - np.dot(Li,Ci)
                 self.P = np.dot(np.dot(temp , self.P)  ,  (temp).T) + np.dot(Li,self.R[i,i]*Li.T) 
-                self.xhat = self.xhat + np.dot(Li , (y.item(i) - h.item(i)))
+                self.xhat_err = self.xhat_err + np.dot(Li , (y.item(i) - h.item(i) - np.dot(Ci,self.xhat_err))) 
+
 
         # only update GPS when one of the signals changes
         if (measurement.gps_n != self.gps_n_old) \
@@ -221,16 +225,18 @@ class directExtendedKalmanFilter:
              or (measurement.gps_course != self.gps_course_old):
             for i in range(3,7):
                 Ci = C[i][None,:]
-                if self.checkOutlier(self.R[i,i], Ci, self.P ,y[i],h[i],prob = self.outlier_prob.item(i)):
+                if self.checkOutlier(self.R[i,i], Ci, self.P ,y[i],h[i]):
                     Li = np.dot(self.P,Ci.T) * 1/(self.R[i,i] + np.dot(np.dot(Ci,self.P) , Ci.T))
                     temp = np.identity(14) - np.dot(Li,Ci)
                     self.P = np.dot(np.dot(temp , self.P)  ,  temp.T) + np.dot(Li,self.R[i,i]*Li.T) 
-                    self.xhat = self.xhat + np.dot(Li , (y.item(i) - h.item(i)))
+                    self.xhat_err = self.xhat_err + np.dot(Li , (y.item(i) - h.item(i) - np.dot(Ci,self.xhat_err)))
             # update stored GPS signals
             self.gps_n_old = measurement.gps_n
             self.gps_e_old = measurement.gps_e
             self.gps_Vg_old = measurement.gps_Vg
             self.gps_course_old = measurement.gps_course
+        self.xhat = self.xhat + self.xhat_err
+        self.xhat_err = np.zeros((14,1))
     
     def f(self, x, u_):
     # system dynamics for propagation model: xdot = f(x, u)

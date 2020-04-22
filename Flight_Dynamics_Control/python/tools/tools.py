@@ -34,6 +34,12 @@ def Euler2RotationMatrix(phi,theta,psi):
                     np.cos(phi)*np.cos(theta)]])
     return R
 
+def AngularRate2AttitudeDeriv(phi,theta,psi):
+    S = np.array([[1, np.sin(phi)*np.tan(theta) , np.cos(phi)*np.tan(theta)],
+                [0 , np.cos(phi) , -np.sin(phi)],
+                [0 , np.sin(phi)/np.cos(theta) , np.cos(phi)/np.cos(theta)]])
+    return S
+
 def Quaternion2RotationMatrix(quat):
     if len(quat) != 4:
         print("Error: Quaternion size not valid")

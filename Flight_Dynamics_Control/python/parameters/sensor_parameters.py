@@ -46,4 +46,4 @@ gps_course_sigma_ave = gps_Vg_sigma / ave_Vg
 
 # -------Wind Pseudo Parameters --------
 wind_sigma = 1.5
-beta_sigma = np.radians(0.03) #sideslip
+psuedo_ur_sigma = 0.27 #sideslip

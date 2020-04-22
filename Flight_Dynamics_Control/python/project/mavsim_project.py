@@ -9,22 +9,27 @@ import parameters.simulation_parameters as SIM
 
 from chap4.mav_viewer import mav_viewer
 from chap4.data_viewer import data_viewer
+from project.data_viewer2 import data_viewer2
 from chap4.wind_simulation import wind_simulation
 from chap6.autopilot import autopilot
 from chap7.mav_dynamics import mav_dynamics
 #from chap8.observer import observer
 from project.fullStateDirectObserver import fullStateDirectObserver as fsdObserver 
+from project.fullStateIndirectObserver import fullStateIndirectObserver as fsiObserver
 from tools.signals import signals
 
 # initialize the visualization
 mav_view = mav_viewer()  # initialize the mav viewer
 data_view = data_viewer()  # initialize view of data plots
+data_view2 = data_viewer2()  # initialize view of data plots
+
 
 # initialize elements of the architecture
 wind = wind_simulation(SIM.ts_simulation)
 mav = mav_dynamics(SIM.ts_simulation)
 ctrl = autopilot(SIM.ts_simulation)
 obsv = fsdObserver(SIM.ts_simulation)
+obsv2 = fsiObserver(SIM.ts_simulation)
 
 
 
@@ -59,7 +64,8 @@ while sim_time < SIM.end_time:
     # -------controller-------------
     measurements = mav.sensors()  # get sensor measurements
     estimated_state = obsv.update(measurements)  # estimate states from measurements
-    delta, commanded_state = ctrl.update(commands, mav.msg_true_state)
+    estimated_state2 = obsv2.update(measurements)
+    delta, commanded_state = ctrl.update(commands, mav.msg_true_state) #mav.msg_true_state)
 
     # -------physical system-------------
     current_wind = wind.update()  # get the new wind vector
@@ -67,10 +73,17 @@ while sim_time < SIM.end_time:
 
     # -------update viewer-------------
     mav_view.update(mav.msg_true_state)  # plot body of MAV
+
+    #update data viewer
     data_view.update(mav.msg_true_state,  # true states
                      estimated_state,  # estimated states
                      commanded_state,  # commanded states
                      SIM.ts_simulation)
+
+    data_view2.update(mav.msg_true_state,  # true states
+                      estimated_state,  # estimated states
+                      estimated_state2,  # commanded states
+                      SIM.ts_simulation)
 
     # -------increment time-------------
     sim_time += SIM.ts_simulation
